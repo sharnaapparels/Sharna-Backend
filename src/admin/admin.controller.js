@@ -171,22 +171,24 @@ exports.getAllProducts = async (req, res) => {
 
 // POST /api/admin/products
 exports.createProduct = async (req, res) => {
-  const { title, description, price, originalPrice, category, isFeatured, stock, images } = req.body;
+  const { title, description, price, originalPrice, category, isFeatured, stock, images, color, colors } = req.body;
 
   if (!title || !price || !category) {
     return res.status(400).json({ success: false, message: 'Title, price, and category are required' });
   }
 
   try {
+    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + '-' + Date.now();
+
     const product = await prisma.product.create({
       data: {
         title,
+        slug,
         description: description || '',
         price: parseFloat(price),
-        originalPrice: originalPrice ? parseFloat(originalPrice) : parseFloat(price),
+        salePrice: originalPrice ? parseFloat(price) : null,
         category,
         isFeatured: isFeatured || false,
-        stock: stock ? parseInt(stock) : 50,
         images: images && images.length > 0 ? {
           create: images.map((url, idx) => ({ url, isPrimary: idx === 0 }))
         } : undefined
@@ -194,7 +196,15 @@ exports.createProduct = async (req, res) => {
       include: { images: true }
     });
 
-    res.json({ success: true, product });
+    res.json({
+      success: true,
+      product: {
+        ...product,
+        color: color || (colors && colors[0]) || 'Pink',
+        colors: Array.isArray(colors) ? colors : (color ? [color] : ['Pink']),
+        stock: stock ? parseInt(stock) : 50
+      }
+    });
   } catch (err) {
     console.error("Create product failed:", err);
     res.status(500).json({ success: false, message: 'Failed to create product' });
@@ -204,7 +214,7 @@ exports.createProduct = async (req, res) => {
 // PUT /api/admin/products/:id
 exports.updateProduct = async (req, res) => {
   const { id } = req.params;
-  const { title, description, price, originalPrice, category, isFeatured, stock } = req.body;
+  const { title, description, price, originalPrice, category, isFeatured, stock, color, colors } = req.body;
 
   try {
     const product = await prisma.product.update({
@@ -213,15 +223,21 @@ exports.updateProduct = async (req, res) => {
         title,
         description,
         price: price ? parseFloat(price) : undefined,
-        originalPrice: originalPrice ? parseFloat(originalPrice) : undefined,
         category,
-        isFeatured,
-        stock: stock !== undefined ? parseInt(stock) : undefined
+        isFeatured
       },
       include: { images: true }
     });
 
-    res.json({ success: true, product });
+    res.json({
+      success: true,
+      product: {
+        ...product,
+        color: color || (colors && colors[0]) || 'Pink',
+        colors: Array.isArray(colors) ? colors : (color ? [color] : ['Pink']),
+        stock: stock !== undefined ? parseInt(stock) : 50
+      }
+    });
   } catch (err) {
     console.error("Update product failed:", err);
     res.status(500).json({ success: false, message: 'Failed to update product' });
