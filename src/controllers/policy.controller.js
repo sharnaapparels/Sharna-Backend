@@ -1,30 +1,21 @@
-const Policy = require('../models/policy.model');
+const prisma = require('../config/database');
 
+// GET /api/policy/:type
 exports.getPolicy = async (req, res) => {
-  const { type } = req.params;
-  
-  let policy = await Policy.findOne({ type });
-  if (!policy) {
-    policy = await Policy.create({
-      type,
-      content: `Default content for Sharna ${type} policy. Update this in Admin Settings.`
-    });
-  }
-
+  const policy = await prisma.policy.findUnique({
+    where: { type: req.params.type.toUpperCase() }
+  });
+  if (!policy) return res.status(404).json({ success: false, message: 'Policy not found' });
   res.json({ success: true, policy });
 };
 
+// PUT /api/policy/:type (admin)
 exports.updatePolicy = async (req, res) => {
-  const { type } = req.params;
   const { content } = req.body;
-
-  let policy = await Policy.findOne({ type });
-  if (policy) {
-    policy.content = content;
-    await policy.save();
-  } else {
-    policy = await Policy.create({ type, content });
-  }
-
+  const policy = await prisma.policy.upsert({
+    where: { type: req.params.type.toUpperCase() },
+    update: { content },
+    create: { type: req.params.type.toUpperCase(), content }
+  });
   res.json({ success: true, policy });
 };

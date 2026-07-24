@@ -1,12 +1,16 @@
-const Contact = require('../models/contact.model');
+const prisma = require('../config/database');
 
-exports.submitContactForm = async (req, res) => {
-  const { name, email, phone, message } = req.body;
+// POST /api/contact
+exports.submitContact = async (req, res) => {
+  const { name, email, phone, subject, message } = req.body;
+  const contact = await prisma.contact.create({
+    data: { name, email, phone, subject, message, userId: req.user?.id || null }
+  });
+  res.status(201).json({ success: true, contact });
+};
 
-  if (!name || !email || !message) {
-    return res.status(400).json({ success: false, message: 'Please provide name, email, and message' });
-  }
-
-  const contact = await Contact.create({ name, email, phone, message });
-  res.status(201).json({ success: true, message: 'Your support request has been submitted successfully', contact });
+// GET /api/contact (admin only)
+exports.getAllContacts = async (req, res) => {
+  const contacts = await prisma.contact.findMany({ orderBy: { createdAt: 'desc' } });
+  res.json({ success: true, contacts });
 };

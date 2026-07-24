@@ -1,101 +1,81 @@
-const Product = require('../models/product.model');
-const slugify = require('slugify');
+const prisma = require('../config/database');
+const { v4: uuidv4 } = require('uuid');
 
-exports.getProducts = async (req, res) => {
-  const { category, search, size, color, sort, page = 1, limit = 12 } = req.query;
-  const queryObj = {};
+// GET /api/products
+exports.getAllProducts = async (req, res) => {
+  const { category, collection, search, minPrice, maxPrice, page = 1, limit = 20 } = req.query;
 
-  if (category) {
-    queryObj.category = category;
+  const where = { isPublished: true };
+  if (category) where.category = category;
+  if (collection) where.collection = collection;
+  if (search) where.title = { contains: search, mode: 'insensitive' };
+  if (minPrice || maxPrice) {
+    where.price = {};
+    if (minPrice) where.price.gte = parseFloat(minPrice);
+    if (maxPrice) where.price.lte = parseFloat(maxPrice);
   }
 
-  if (search) {
-    queryObj.$text = { $search: search };
-  }
+  const [products, total] = await prisma.$transaction([
+    prisma.product.findMany({
+      where,
+      include: { images: true, variants: true, reviews: { select: { rating: true } } },
+      skip: (page - 1) * limit,
+      take: parseInt(limit),
+      orderBy: { createdAt: 'desc' }
+    }),
+    prisma.product.count({ where })
+  ]);
 
-  if (size) {
-    queryObj.sizes = size;
-  }
-
-  if (color) {
-    queryObj['colors.name'] = color;
-  }
-
-  let query = Product.find(queryObj);
-
-  // Sorting
-  if (sort === 'price-asc') {
-    query = query.sort('price');
-  } else if (sort === 'price-desc') {
-    query = query.sort('-price');
-  } else {
-    query = query.sort('-createdAt');
-  }
-
-  // Pagination
-  const skip = (Number(page) - 1) * Number(limit);
-  query = query.skip(skip).limit(Number(limit));
-
-  const products = await query;
-  const total = await Product.countDocuments(queryObj);
-
-  res.json({
-    success: true,
-    total,
-    page: Number(page),
-    pages: Math.ceil(total / Number(limit)),
-    products
-  });
+  res.json({ success: true, products, total, page: parseInt(page), pages: Math.ceil(total / limit) });
 };
 
-exports.getProductById = async (req, res) => {
-  const product = await Product.findById(req.params.id);
-  if (!product) {
-    return res.status(404).json({ success: false, message: 'Product not found' });
-  }
+// GET /api/products/:slug
+exports.getProductBySlug = async (req, res) => {
+  const product = await prisma.product.findUnique({
+    where: { slug: req.params.slug },
+    include: {
+      images: true,
+      variants: true,
+      reviews: { include: { user: { select: { name: true } } } }
+    }
+  });
+
+  if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
   res.json({ success: true, product });
 };
 
+// POST /api/products (admin)
 exports.createProduct = async (req, res) => {
-  const { title, description, price, originalPrice, category, sizes, colors, images, fit, inStock } = req.body;
-  
-  const slug = slugify(title, { lower: true });
-  
-  let saving = 0;
-  if (originalPrice && originalPrice > price) {
-    saving = originalPrice - price;
-  }
+  const { title, description, price, salePrice, category, collection, fabric, care, variants, images } = req.body;
 
-  const product = await Product.create({
-    title, slug, description, price, originalPrice, saving, category, sizes, colors, images, fit, inStock
+  const slug = title.toLowerCase().replace(/\s+/g, '-') + '-' + uuidv4().slice(0, 6);
+
+  const product = await prisma.product.create({
+    data: {
+      title, slug, description, price: parseFloat(price),
+      salePrice: salePrice ? parseFloat(salePrice) : null,
+      category, collection, fabric, care,
+      images: images ? { create: images } : undefined,
+      variants: variants ? { create: variants } : undefined
+    },
+    include: { images: true, variants: true }
   });
 
   res.status(201).json({ success: true, product });
 };
 
+// PUT /api/products/:id (admin)
 exports.updateProduct = async (req, res) => {
-  const product = await Product.findById(req.params.id);
-  if (!product) {
-    return res.status(404).json({ success: false, message: 'Product not found' });
-  }
-
-  if (req.body.title) {
-    req.body.slug = slugify(req.body.title, { lower: true });
-  }
-
-  if (req.body.price && req.body.originalPrice) {
-    req.body.saving = req.body.originalPrice - req.body.price;
-  }
-
-  const updatedProduct = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
-  res.json({ success: true, product: updatedProduct });
+  const product = await prisma.product.update({
+    where: { id: req.params.id },
+    data: req.body,
+    include: { images: true, variants: true }
+  });
+  res.json({ success: true, product });
 };
 
+// DELETE /api/products/:id (admin)
 exports.deleteProduct = async (req, res) => {
-  const product = await Product.findById(req.params.id);
-  if (!product) {
-    return res.status(404).json({ success: false, message: 'Product not found' });
-  }
-  await product.deleteOne();
-  res.json({ success: true, message: 'Product removed' });
+  await prisma.product.delete({ where: { id: req.params.id } });
+  res.json({ success: true, message: 'Product deleted' });
 };

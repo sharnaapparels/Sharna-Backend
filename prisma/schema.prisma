@@ -1,0 +1,260 @@
+// This is your Prisma schema file
+// Learn more at https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────
+model User {
+  id          String   @id @default(cuid())
+  name        String
+  email       String?  @unique
+  phone       String?  @unique
+  password    String?
+  role        Role     @default(USER)
+  isBlocked   Boolean  @default(false)
+  isVerified  Boolean  @default(false)  // becomes true after OTP verification
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // OTP fields
+  otp         String?   // hashed OTP
+  otpExpires  DateTime? // expiry time
+  otpPurpose  OtpPurpose? // what the OTP is for
+
+  addresses Address[]
+  orders    Order[]
+  cart      CartItem[]
+  wishlist  Wishlist[]
+  reviews   Review[]
+  contacts  Contact[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OtpPurpose {
+  SIGNUP
+  LOGIN
+  PASSWORD_RESET
+}
+
+model Address {
+  id         String  @id @default(cuid())
+  street     String
+  city       String
+  state      String
+  postalCode String
+  country    String  @default("India")
+  isDefault  Boolean @default(false)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────
+// PRODUCT
+// ─────────────────────────────────────────────
+model Product {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  description String?  @db.Text
+  price       Float
+  salePrice   Float?
+  category    String
+  collection  String?
+  fabric      String?
+  care        String?
+  isPublished Boolean  @default(true)
+  isFeatured  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  images    ProductImage[]
+  variants  ProductVariant[]
+  cartItems CartItem[]
+  wishlist  Wishlist[]
+  reviews   Review[]
+  orderItems OrderItem[]
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  url       String   // Cloudinary URL
+  publicId  String?  // Cloudinary public_id for deletion
+  isPrimary Boolean @default(false)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductVariant {
+  id        String @id @default(cuid())
+  size      String? // XS, S, M, L, XL, XXL, or numeric
+  color     String?
+  colorHex  String?
+  stock     Int    @default(0)
+  sku       String? @unique
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+// ─────────────────────────────────────────────
+// CART
+// ─────────────────────────────────────────────
+model CartItem {
+  id       String @id @default(cuid())
+  quantity Int    @default(1)
+  size     String?
+  color    String?
+
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────
+// WISHLIST
+// ─────────────────────────────────────────────
+model Wishlist {
+  id String @id @default(cuid())
+
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+// ─────────────────────────────────────────────
+// ORDER
+// ─────────────────────────────────────────────
+model Order {
+  id             String      @id @default(cuid())
+  status         OrderStatus @default(PENDING)
+  totalAmount    Float
+  shippingAmount Float       @default(0)
+  currency       String      @default("INR")
+  notes          String?
+
+  // Razorpay
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  razorpaySignature String?
+  paymentStatus     PaymentStatus @default(PENDING)
+
+  // Shipping address snapshot
+  shippingStreet     String?
+  shippingCity       String?
+  shippingState      String?
+  shippingPostalCode String?
+  shippingCountry    String? @default("India")
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  items     OrderItem[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model OrderItem {
+  id       String @id @default(cuid())
+  quantity Int
+  price    Float  // Price at time of purchase (snapshot)
+  size     String?
+  color    String?
+
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// REVIEW
+// ─────────────────────────────────────────────
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int      // 1-5
+  title     String?
+  body      String?  @db.Text
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+}
+
+// ─────────────────────────────────────────────
+// CONTACT
+// ─────────────────────────────────────────────
+model Contact {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// POLICY (Shipping, T&C, Privacy, etc.)
+// ─────────────────────────────────────────────
+model Policy {
+  id        String     @id @default(cuid())
+  type      PolicyType @unique
+  content   String     @db.Text
+  updatedAt DateTime   @updatedAt
+}
+
+enum PolicyType {
+  SHIPPING
+  CANCELLATION
+  PRIVACY
+  TERMS
+}

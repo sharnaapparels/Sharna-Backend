@@ -1,76 +1,87 @@
-require('dotenv').config();
-require('express-async-errors');
+require('dotenv').config({ override: true });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const prisma = require('./src/config/database');
 
-// Route imports
+// Routes
 const authRoutes = require('./src/routes/auth.routes');
 const productRoutes = require('./src/routes/product.routes');
-const cartRoutes = require('./src/routes/cart.routes');
-const wishlistRoutes = require('./src/routes/wishlist.routes');
 const orderRoutes = require('./src/routes/order.routes');
 const paymentRoutes = require('./src/routes/payment.routes');
+const cartRoutes = require('./src/routes/cart.routes');
+const wishlistRoutes = require('./src/routes/wishlist.routes');
 const reviewRoutes = require('./src/routes/review.routes');
-const adminRoutes = require('./src/routes/admin.routes');
 const contactRoutes = require('./src/routes/contact.routes');
-const policyRoutes = require('./src/routes/policy.routes');
+const adminRoutes = require('./src/routes/admin.routes');
+const uploadRoutes = require('./src/routes/upload.routes');
 
-// Middleware
-const { errorHandler, notFound } = require('./src/middleware/errorHandler');
-const connectDB = require('./src/config/database');
+const { notFound, errorHandler } = require('./src/middleware/errorHandler');
 
 const app = express();
 
-// ─── Connect Database ──────────────────────────────────────────────────────────
-connectDB();
-
-// ─── Security & Parsing ────────────────────────────────────────────────────────
+// Security
 app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true,
-}));
-app.use(morgan('dev'));
+app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173', credentials: true }));
+
+// Rate limiting
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
+app.use(limiter);
+
+// Body parsing
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// ─── Global Rate Limiter ───────────────────────────────────────────────────────
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
-  message: { success: false, message: 'Too many requests, please try again later.' },
-});
-app.use('/api/', limiter);
+// Logging
+if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
 
-// ─── Health Check ──────────────────────────────────────────────────────────────
-app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'Sharna API is running 🚀', timestamp: new Date() });
+// Health check
+app.get('/health', async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'OK', database: 'PostgreSQL Connected', timestamp: new Date() });
+  } catch (error) {
+    res.status(500).json({ status: 'ERROR', database: 'Disconnected' });
+  }
 });
 
-// ─── Routes ────────────────────────────────────────────────────────────────────
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
-app.use('/api/cart', cartRoutes);
-app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/payment', paymentRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/wishlist', wishlistRoutes);
 app.use('/api/reviews', reviewRoutes);
-app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
-app.use('/api/policy', policyRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/upload', uploadRoutes);
 
-// ─── Error Handling ────────────────────────────────────────────────────────────
+// Error handling
 app.use(notFound);
 app.use(errorHandler);
 
-// ─── Start Server ──────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`\n✅ Sharna Backend running on port ${PORT}`);
-  console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}\n`);
-});
 
-module.exports = app;
+const { initWishlistReminderJob } = require('./src/jobs/wishlistReminder.job');
+
+const startServer = async () => {
+  try {
+    // Test the DB connection
+    await prisma.$connect();
+    console.log('✅ PostgreSQL Connected via Prisma');
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      // Initialize abandoned wishlist reminder background job
+      initWishlistReminderJob();
+    });
+  } catch (error) {
+    console.error('❌ Failed to connect to the database:', error);
+    process.exit(1);
+  }
+};
+
+startServer();

@@ -1,13 +1,12 @@
-const mongoose = require('mongoose');
+require('dotenv').config();
+const { PrismaClient } = require('@prisma/client');
 
-const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/sharna');
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`❌ MongoDB connection error: ${error.message}`);
-    process.exit(1);
-  }
-};
+const prisma = new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+});
 
-module.exports = connectDB;
+process.on('beforeExit', async () => {
+  await prisma.$disconnect();
+});
+
+module.exports = prisma;
