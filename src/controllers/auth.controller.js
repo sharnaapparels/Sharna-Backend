@@ -220,7 +220,7 @@ exports.login = async (req, res) => {
 
   // Admin Credentials Recognition
   const isAdminCredential = 
-    (identifier === 'chetna@sharna.com' || identifier === 'admin@sharna.com' || identifier === '+919876543210' || identifier === '9876543210') &&
+    (identifier === 'sharnaapparels@gmail.com' || identifier === 'chetna@sharna.com' || identifier === 'admin@sharna.com' || identifier === '+919876543210' || identifier === '9876543210') &&
     password === 'admin123';
 
   // Find user by email OR phone
@@ -240,7 +240,7 @@ exports.login = async (req, res) => {
       user = await prisma.user.create({
         data: {
           name: 'Mrs. Chetna Kureel',
-          email: 'chetna@sharna.com',
+          email: 'sharnaapparels@gmail.com',
           phone: '+919876543210',
           password: hashedPassword,
           role: 'ADMIN',
