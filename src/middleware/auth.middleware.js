@@ -20,10 +20,22 @@ const protect = async (req, res, next) => {
         return next();
       }
 
-      req.user = await prisma.user.findUnique({
-        where: { id: decoded.id },
-        select: { id: true, name: true, email: true, phone: true, role: true, isBlocked: true }
-      });
+      try {
+        req.user = await prisma.user.findUnique({
+          where: { id: decoded.id },
+          select: { id: true, name: true, email: true, phone: true, role: true, isBlocked: true }
+        });
+      } catch (dbErr) {
+        try {
+          await prisma.$connect();
+          req.user = await prisma.user.findUnique({
+            where: { id: decoded.id },
+            select: { id: true, name: true, email: true, phone: true, role: true, isBlocked: true }
+          });
+        } catch (e) {
+          throw dbErr;
+        }
+      }
 
       if (!req.user || req.user.isBlocked) {
         return res.status(401).json({ success: false, message: 'Not authorized' });
