@@ -98,12 +98,12 @@ const runAbandonedWishlistScan = async () => {
  * Initialize background scheduler (runs every 4 days)
  */
 const initWishlistReminderJob = () => {
-  console.log('⏰ Wishlist Abandonment Scheduler initialized (interval: 4 days)');
-  // Initial check after 30 seconds of server startup
-  setTimeout(() => {
-    runAbandonedWishlistScan();
-  }, 30000);
+  if (process.env.ENABLE_WISHLIST_CRON !== 'true') {
+    console.log('ℹ️ Wishlist Abandonment Background Scheduler is disabled (set ENABLE_WISHLIST_CRON=true to activate)');
+    return;
+  }
 
+  console.log('⏰ Wishlist Abandonment Scheduler initialized (interval: 4 days)');
   // Periodic interval every 4 days
   setInterval(() => {
     runAbandonedWishlistScan();
