@@ -171,7 +171,7 @@ exports.getAllProducts = async (req, res) => {
 
 // POST /api/admin/products
 exports.createProduct = async (req, res) => {
-  const { title, description, price, originalPrice, category, isFeatured, stock, images, color, colors } = req.body;
+  const { title, description, price, originalPrice, category, isFeatured, stock, images, color, colors, sizes } = req.body;
 
   if (!title || !price || !category) {
     return res.status(400).json({ success: false, message: 'Title, price, and category are required' });
@@ -179,6 +179,11 @@ exports.createProduct = async (req, res) => {
 
   try {
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + '-' + Date.now();
+
+    const formattedImages = Array.isArray(images) ? images.map((img, idx) => {
+      const imageUrl = typeof img === 'string' ? img : (img.url || img.src || '');
+      return { url: imageUrl, isPrimary: idx === 0 };
+    }).filter(i => i.url) : [];
 
     const product = await prisma.product.create({
       data: {
@@ -189,25 +194,26 @@ exports.createProduct = async (req, res) => {
         salePrice: originalPrice ? parseFloat(price) : null,
         category,
         isFeatured: isFeatured || false,
-        images: images && images.length > 0 ? {
-          create: images.map((url, idx) => ({ url, isPrimary: idx === 0 }))
-        } : undefined
+        images: formattedImages.length > 0 ? { create: formattedImages } : undefined
       },
       include: { images: true }
     });
 
-    res.json({
+    console.log(`✅ [PRODUCT CREATED IN DB]: ${product.title} (ID: ${product.id})`);
+
+    res.status(201).json({
       success: true,
       product: {
         ...product,
         color: color || (colors && colors[0]) || 'Pink',
         colors: Array.isArray(colors) ? colors : (color ? [color] : ['Pink']),
+        sizes: Array.isArray(sizes) ? sizes : ['XS', 'S', 'M', 'L', 'XL'],
         stock: stock ? parseInt(stock) : 50
       }
     });
   } catch (err) {
-    console.error("Create product failed:", err);
-    res.status(500).json({ success: false, message: 'Failed to create product' });
+    console.error("❌ Create product failed:", err.message);
+    res.status(500).json({ success: false, message: err.message || 'Failed to create product' });
   }
 };
 
@@ -217,17 +223,21 @@ exports.updateProduct = async (req, res) => {
   const { title, description, price, originalPrice, category, isFeatured, stock, color, colors } = req.body;
 
   try {
+    const updateData = {};
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (price !== undefined) updateData.price = parseFloat(price);
+    if (originalPrice !== undefined) updateData.salePrice = parseFloat(originalPrice);
+    if (category !== undefined) updateData.category = category;
+    if (isFeatured !== undefined) updateData.isFeatured = isFeatured;
+
     const product = await prisma.product.update({
       where: { id },
-      data: {
-        title,
-        description,
-        price: price ? parseFloat(price) : undefined,
-        category,
-        isFeatured
-      },
+      data: updateData,
       include: { images: true }
     });
+
+    console.log(`✅ [PRODUCT UPDATED IN DB]: ${product.title} (ID: ${product.id})`);
 
     res.json({
       success: true,
@@ -239,8 +249,8 @@ exports.updateProduct = async (req, res) => {
       }
     });
   } catch (err) {
-    console.error("Update product failed:", err);
-    res.status(500).json({ success: false, message: 'Failed to update product' });
+    console.error("❌ Update product failed:", err.message);
+    res.status(500).json({ success: false, message: err.message || 'Failed to update product' });
   }
 };
 
