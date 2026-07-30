@@ -220,7 +220,7 @@ exports.createProduct = async (req, res) => {
 // PUT /api/admin/products/:id
 exports.updateProduct = async (req, res) => {
   const { id } = req.params;
-  const { title, description, price, originalPrice, category, isFeatured, stock, color, colors } = req.body;
+  const { title, description, price, originalPrice, category, isFeatured, stock, color, colors, images } = req.body;
 
   try {
     const updateData = {};
@@ -231,13 +231,40 @@ exports.updateProduct = async (req, res) => {
     if (category !== undefined) updateData.category = category;
     if (isFeatured !== undefined) updateData.isFeatured = isFeatured;
 
-    const product = await prisma.product.update({
-      where: { id },
-      data: updateData,
-      include: { images: true }
-    });
+    // Check if product exists in DB first
+    const existing = await prisma.product.findUnique({ where: { id } });
 
-    console.log(`✅ [PRODUCT UPDATED IN DB]: ${product.title} (ID: ${product.id})`);
+    let product;
+    if (existing) {
+      product = await prisma.product.update({
+        where: { id },
+        data: updateData,
+        include: { images: true }
+      });
+    } else {
+      // Auto-provision product in PostgreSQL if ID was a client fallback ID
+      const slug = (title || 'product').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + '-' + Date.now();
+      const formattedImages = Array.isArray(images) ? images.map((img, idx) => {
+        const imageUrl = typeof img === 'string' ? img : (img.url || img.src || '');
+        return { url: imageUrl, isPrimary: idx === 0 };
+      }).filter(i => i.url) : [];
+
+      product = await prisma.product.create({
+        data: {
+          title: title || 'New Luxury Garment',
+          slug,
+          description: description || '',
+          price: price ? parseFloat(price) : 999,
+          salePrice: originalPrice ? parseFloat(originalPrice) : null,
+          category: category || 'Ethnic Wear',
+          isFeatured: isFeatured || false,
+          images: formattedImages.length > 0 ? { create: formattedImages } : undefined
+        },
+        include: { images: true }
+      });
+    }
+
+    console.log(`✅ [PRODUCT SAVED TO DB]: ${product.title} (ID: ${product.id})`);
 
     res.json({
       success: true,
