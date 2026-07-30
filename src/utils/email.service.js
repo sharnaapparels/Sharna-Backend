@@ -2,7 +2,7 @@ const axios = require('axios');
 const nodemailer = require('nodemailer');
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_sharna_demo_key_984102';
-const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'SHARNA Luxury <onboarding@resend.dev>';
+const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'SHARNA Luxury <orders@sharna.in>';
 const RESEND_BASE_URL = 'https://api.resend.com/emails';
 
 /**
