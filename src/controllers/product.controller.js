@@ -3,7 +3,11 @@ const { v4: uuidv4 } = require('uuid');
 
 // GET /api/products
 exports.getAllProducts = async (req, res) => {
-  const { category, collection, search, minPrice, maxPrice, page = 1, limit = 20 } = req.query;
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
+  const { category, collection, search, minPrice, maxPrice, page = 1, limit = 50 } = req.query;
 
   const where = { isPublished: true };
   if (category) where.category = category;
