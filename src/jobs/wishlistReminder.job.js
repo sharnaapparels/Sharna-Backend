@@ -5,9 +5,9 @@ const { sendWhatsAppWishlistReminder } = require('../utils/whatsapp.service');
 // Map to track last time a user was sent an automated background reminder (prevents spamming)
 const lastReminderSentMap = new Map();
 
-// Default delay threshold: 3 Days (customizable via env WISHLIST_REMINDER_DAYS, e.g. 3 or 4 days)
-const REMINDER_DAYS = parseInt(process.env.WISHLIST_REMINDER_DAYS) || 3;
-const REMINDER_DELAY_MS = REMINDER_DAYS * 24 * 60 * 60 * 1000; // 3 to 4 days in milliseconds
+// Default delay threshold: 4 Days (96 hours)
+const REMINDER_DAYS = parseInt(process.env.WISHLIST_REMINDER_DAYS) || 4;
+const REMINDER_DELAY_MS = REMINDER_DAYS * 24 * 60 * 60 * 1000; // 4 days in milliseconds
 
 /**
  * Execute automated scan for users with abandoned items in wishlist
@@ -95,19 +95,19 @@ const runAbandonedWishlistScan = async () => {
 };
 
 /**
- * Initialize background scheduler (runs every 15 mins)
+ * Initialize background scheduler (runs every 4 days)
  */
 const initWishlistReminderJob = () => {
-  console.log('⏰ Wishlist Abandonment Scheduler initialized (interval: 15 mins)');
+  console.log('⏰ Wishlist Abandonment Scheduler initialized (interval: 4 days)');
   // Initial check after 30 seconds of server startup
   setTimeout(() => {
     runAbandonedWishlistScan();
   }, 30000);
 
-  // Periodic interval every 15 minutes
+  // Periodic interval every 4 days
   setInterval(() => {
     runAbandonedWishlistScan();
-  }, 15 * 60 * 1000);
+  }, 4 * 24 * 60 * 60 * 1000);
 };
 
 module.exports = { initWishlistReminderJob, runAbandonedWishlistScan };

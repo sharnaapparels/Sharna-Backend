@@ -9,10 +9,8 @@ const productSchema = new mongoose.Schema({
   saving: { type: Number },
   category: { type: String, required: true, trim: true },
   sizes: [{ type: String }],
-  colors: [{
-    name: { type: String, required: true },
-    hex: { type: String, required: true }
-  }],
+  color: { type: String },
+  colors: [{ type: mongoose.Schema.Types.Mixed }],
   images: [{ type: String }],
   sizeChart: { type: String }, // URL to size chart image or HTML table content
   inStock: { type: Boolean, default: true },

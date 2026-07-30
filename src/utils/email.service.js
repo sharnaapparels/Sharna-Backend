@@ -32,7 +32,35 @@ const sendResendEmail = async ({ to, subject, html, text }) => {
       console.log(`✅ [Resend Email Sent]: To ${to} | ID: ${response.data.id}`);
       return { success: true, id: response.data.id };
     } catch (err) {
-      console.warn("⚠️ Resend API warning:", err.response?.data?.message || err.message);
+      const errMsg = err.response?.data?.message || err.message;
+      console.warn("⚠️ Resend API primary domain attempt warning:", errMsg);
+
+      // If domain is unverified on Resend free tier, retry with onboarding@resend.dev default testing domain
+      if (errMsg.includes('domain') || errMsg.includes('verify') || err.response?.status === 403 || err.response?.status === 422) {
+        try {
+          console.log(`🔄 Retrying Resend with testing domain (onboarding@resend.dev)...`);
+          const retryRes = await axios.post(
+            RESEND_BASE_URL,
+            {
+              from: 'SHARNA Luxury <onboarding@resend.dev>',
+              to: Array.isArray(to) ? to : [to],
+              subject,
+              html,
+              text: text || 'Please view this email in an HTML-compatible email reader.'
+            },
+            {
+              headers: {
+                'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          console.log(`✅ [Resend Email Sent via onboarding@resend.dev]: To ${to} | ID: ${retryRes.data.id}`);
+          return { success: true, id: retryRes.data.id };
+        } catch (retryErr) {
+          console.error("❌ Resend retry warning:", retryErr.response?.data?.message || retryErr.message);
+        }
+      }
     }
   }
 

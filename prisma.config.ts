@@ -1,5 +1,4 @@
-// Prisma 6 config — schema & migration paths defined here
-// DB URL stays in schema.prisma via env("DATABASE_URL")
+import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
 export default defineConfig({
