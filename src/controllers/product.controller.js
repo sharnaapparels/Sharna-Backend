@@ -33,19 +33,31 @@ exports.getAllProducts = async (req, res) => {
   res.json({ success: true, products, total, page: parseInt(page), pages: Math.ceil(total / limit) });
 };
 
-// GET /api/products/:slug
+// GET /api/products/:slug (matches slug or id)
 exports.getProductBySlug = async (req, res) => {
-  const product = await prisma.product.findUnique({
-    where: { slug: req.params.slug },
-    include: {
-      images: true,
-      variants: true,
-      reviews: { include: { user: { select: { name: true } } } }
-    }
-  });
+  const { slug: identifier } = req.params;
 
-  if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
-  res.json({ success: true, product });
+  try {
+    const product = await prisma.product.findFirst({
+      where: {
+        OR: [
+          { id: identifier },
+          { slug: identifier }
+        ]
+      },
+      include: {
+        images: true,
+        variants: true,
+        reviews: { include: { user: { select: { name: true } } } }
+      }
+    });
+
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+    res.json({ success: true, product });
+  } catch (err) {
+    console.error("Fetch product failed:", err.message);
+    res.status(500).json({ success: false, message: 'Failed to retrieve product' });
+  }
 };
 
 // POST /api/products (admin)

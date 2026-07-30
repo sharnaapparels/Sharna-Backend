@@ -171,7 +171,7 @@ exports.getAllProducts = async (req, res) => {
 
 // POST /api/admin/products
 exports.createProduct = async (req, res) => {
-  const { title, description, price, originalPrice, category, isFeatured, stock, images, color, colors, sizes } = req.body;
+  const { title, description, price, originalPrice, category, collection, isNewArrival, isReadyToShip, isFeatured, stock, images, color, colors, sizes } = req.body;
 
   if (!title || !price || !category) {
     return res.status(400).json({ success: false, message: 'Title, price, and category are required' });
@@ -185,6 +185,8 @@ exports.createProduct = async (req, res) => {
       return { url: imageUrl, isPrimary: idx === 0 };
     }).filter(i => i.url) : [];
 
+    const computedCollection = collection || (isNewArrival ? 'new-arrivals' : (isReadyToShip ? 'ready-to-ship' : 'festive-collection'));
+
     const product = await prisma.product.create({
       data: {
         title,
@@ -193,6 +195,7 @@ exports.createProduct = async (req, res) => {
         price: parseFloat(price),
         salePrice: originalPrice ? parseFloat(price) : null,
         category,
+        collection: computedCollection,
         isFeatured: isFeatured || false,
         images: formattedImages.length > 0 ? { create: formattedImages } : undefined
       },
@@ -205,6 +208,8 @@ exports.createProduct = async (req, res) => {
       success: true,
       product: {
         ...product,
+        isNewArrival: isNewArrival || computedCollection === 'new-arrivals',
+        isReadyToShip: isReadyToShip || computedCollection === 'ready-to-ship',
         color: color || (colors && colors[0]) || 'Pink',
         colors: Array.isArray(colors) ? colors : (color ? [color] : ['Pink']),
         sizes: Array.isArray(sizes) ? sizes : ['XS', 'S', 'M', 'L', 'XL'],
@@ -220,15 +225,18 @@ exports.createProduct = async (req, res) => {
 // PUT /api/admin/products/:id
 exports.updateProduct = async (req, res) => {
   const { id } = req.params;
-  const { title, description, price, originalPrice, category, isFeatured, stock, color, colors, images } = req.body;
+  const { title, description, price, originalPrice, category, collection, isNewArrival, isReadyToShip, isFeatured, stock, color, colors, images } = req.body;
 
   try {
+    const computedCollection = collection || (isNewArrival !== undefined ? (isNewArrival ? 'new-arrivals' : 'festive-collection') : (isReadyToShip ? 'ready-to-ship' : undefined));
+
     const updateData = {};
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
     if (price !== undefined) updateData.price = parseFloat(price);
     if (originalPrice !== undefined) updateData.salePrice = parseFloat(originalPrice);
     if (category !== undefined) updateData.category = category;
+    if (computedCollection !== undefined) updateData.collection = computedCollection;
     if (isFeatured !== undefined) updateData.isFeatured = isFeatured;
 
     // Check if product exists in DB first
@@ -256,7 +264,8 @@ exports.updateProduct = async (req, res) => {
           description: description || '',
           price: price ? parseFloat(price) : 999,
           salePrice: originalPrice ? parseFloat(originalPrice) : null,
-          category: category || 'Ethnic Wear',
+          category: category || 'suit-sets',
+          collection: computedCollection || 'festive-collection',
           isFeatured: isFeatured || false,
           images: formattedImages.length > 0 ? { create: formattedImages } : undefined
         },
@@ -270,6 +279,8 @@ exports.updateProduct = async (req, res) => {
       success: true,
       product: {
         ...product,
+        isNewArrival: isNewArrival !== undefined ? isNewArrival : product.collection === 'new-arrivals',
+        isReadyToShip: isReadyToShip !== undefined ? isReadyToShip : product.collection === 'ready-to-ship',
         color: color || (colors && colors[0]) || 'Pink',
         colors: Array.isArray(colors) ? colors : (color ? [color] : ['Pink']),
         stock: stock !== undefined ? parseInt(stock) : 50
