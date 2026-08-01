@@ -92,10 +92,49 @@ exports.register = async (req, res) => {
   });
 };
 
+// ─── Failed OTP Attempt Lockout Helper ────────────────────────────────────────
+const failedOtpAttempts = new Map(); // phone -> { count: number, lockUntil: timestamp }
+const MAX_OTP_ATTEMPTS = 3;
+const LOCKOUT_TIME_MS = 15 * 60 * 1000; // 15 minutes
+
+const checkOtpLockout = (phone) => {
+  const record = failedOtpAttempts.get(phone);
+  if (!record) return null;
+  if (Date.now() < record.lockUntil) {
+    const remainingMins = Math.ceil((record.lockUntil - Date.now()) / 60000);
+    return `Security Lockout: 3 failed OTP attempts exceeded. Please wait ${remainingMins} minute(s) before trying again.`;
+  }
+  failedOtpAttempts.delete(phone);
+  return null;
+};
+
+const registerFailedOtpAttempt = (phone) => {
+  const record = failedOtpAttempts.get(phone) || { count: 0, lockUntil: 0 };
+  record.count += 1;
+  if (record.count >= MAX_OTP_ATTEMPTS) {
+    record.lockUntil = Date.now() + LOCKOUT_TIME_MS;
+    failedOtpAttempts.set(phone, record);
+    return { isLocked: true, message: 'Security Lockout: 3 incorrect OTP attempts entered. Account locked for 15 minutes.' };
+  }
+  failedOtpAttempts.set(phone, record);
+  const attemptsLeft = MAX_OTP_ATTEMPTS - record.count;
+  return { isLocked: false, message: `Invalid OTP. ${attemptsLeft} attempt(s) remaining before a 15-minute lockout.` };
+};
+
+const resetOtpAttempts = (phone) => {
+  failedOtpAttempts.delete(phone);
+};
+
 // ─── VERIFY OTP (Step 2: Verify OTP after register) ─────────────────────────
 // POST /api/auth/verify-otp
 exports.verifyOtp = async (req, res) => {
   const { phone, otp } = req.body;
+
+  // 1. Check if user is currently locked out from too many failed OTP attempts
+  const lockoutMsg = checkOtpLockout(phone);
+  if (lockoutMsg) {
+    return res.status(429).json({ success: false, message: lockoutMsg });
+  }
 
   const user = await prisma.user.findUnique({ where: { phone } });
 
@@ -113,8 +152,13 @@ exports.verifyOtp = async (req, res) => {
 
   const isMatch = await bcrypt.compare(otp, user.otp);
   if (!isMatch) {
-    return res.status(400).json({ success: false, message: 'Invalid OTP. Please try again.' });
+    const lockResult = registerFailedOtpAttempt(phone);
+    const status = lockResult.isLocked ? 429 : 400;
+    return res.status(status).json({ success: false, message: lockResult.message });
   }
+
+  // Clear attempts on success
+  resetOtpAttempts(phone);
 
   // Mark account as verified & clear OTP
   const verifiedUser = await prisma.user.update({
@@ -137,6 +181,12 @@ exports.sendLoginOtp = async (req, res) => {
 
   if (!phone) {
     return res.status(400).json({ success: false, message: 'Phone number is required' });
+  }
+
+  // Check lockout before sending new OTP
+  const lockoutMsg = checkOtpLockout(phone);
+  if (lockoutMsg) {
+    return res.status(429).json({ success: false, message: lockoutMsg });
   }
 
   const user = await prisma.user.findUnique({ where: { phone } });
@@ -176,6 +226,12 @@ exports.sendLoginOtp = async (req, res) => {
 exports.loginWithOtp = async (req, res) => {
   const { phone, otp } = req.body;
 
+  // Check lockout
+  const lockoutMsg = checkOtpLockout(phone);
+  if (lockoutMsg) {
+    return res.status(429).json({ success: false, message: lockoutMsg });
+  }
+
   const user = await prisma.user.findUnique({ where: { phone } });
 
   if (!user || user.isBlocked) {
@@ -192,8 +248,13 @@ exports.loginWithOtp = async (req, res) => {
 
   const isMatch = await bcrypt.compare(otp, user.otp);
   if (!isMatch) {
-    return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    const lockResult = registerFailedOtpAttempt(phone);
+    const status = lockResult.isLocked ? 429 : 400;
+    return res.status(status).json({ success: false, message: lockResult.message });
   }
+
+  // Clear attempts on success
+  resetOtpAttempts(phone);
 
   // Clear OTP after use
   const loggedUser = await prisma.user.update({
@@ -207,6 +268,7 @@ exports.loginWithOtp = async (req, res) => {
     user: formatUserResponse(loggedUser)
   });
 };
+
 
 // ─── LOGIN WITH PASSWORD ─────────────────────────────────────────────────────
 // POST /api/auth/login
