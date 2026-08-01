@@ -88,6 +88,10 @@ model Product {
   wishlist  Wishlist[]
   reviews   Review[]
   orderItems OrderItem[]
+
+  @@index([isPublished, category])
+  @@index([isPublished, collection])
+  @@index([createdAt])
 }
 
 model ProductImage {
@@ -175,6 +179,10 @@ model Order {
   items     OrderItem[]
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([status])
 }
 
 enum OrderStatus {
