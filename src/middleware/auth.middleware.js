@@ -8,45 +8,23 @@ const protect = async (req, res, next) => {
     try {
       token = req.headers.authorization.split(' ')[1];
 
-      if (token.startsWith('mock_jwt_admin_dev_token')) {
-        req.user = { id: 'admin_dev_01', name: 'Mrs. Chetna Kureel', email: 'chetna@sharna.com', phone: '+919876543210', role: 'ADMIN', isBlocked: false };
-        return next();
-      }
-
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      if (decoded.id === 'admin_dev_01') {
-        req.user = { id: 'admin_dev_01', name: 'Mrs. Chetna Kureel', email: 'chetna@sharna.com', phone: '+919876543210', role: 'ADMIN', isBlocked: false };
-        return next();
-      }
-
-      try {
-        req.user = await prisma.user.findUnique({
-          where: { id: decoded.id },
-          select: { id: true, name: true, email: true, phone: true, role: true, isBlocked: true }
-        });
-      } catch (dbErr) {
-        try {
-          await prisma.$connect();
-          req.user = await prisma.user.findUnique({
-            where: { id: decoded.id },
-            select: { id: true, name: true, email: true, phone: true, role: true, isBlocked: true }
-          });
-        } catch (e) {
-          throw dbErr;
-        }
-      }
+      req.user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { id: true, name: true, email: true, phone: true, role: true, isBlocked: true }
+      });
 
       if (!req.user || req.user.isBlocked) {
-        return res.status(401).json({ success: false, message: 'Not authorized' });
+        return res.status(401).json({ success: false, message: 'Not authorized or account blocked' });
       }
 
       next();
     } catch (error) {
-      return res.status(401).json({ success: false, message: 'Invalid token' });
+      return res.status(401).json({ success: false, message: 'Invalid or expired authentication token' });
     }
   } else {
-    return res.status(401).json({ success: false, message: 'No token provided' });
+    return res.status(401).json({ success: false, message: 'No authorization token provided' });
   }
 };
 
@@ -62,15 +40,7 @@ const optionalAuth = async (req, res, next) => {
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       const token = req.headers.authorization.split(' ')[1];
-      if (token.startsWith('mock_jwt_admin_dev_token')) {
-        req.user = { id: 'admin_dev_01', name: 'Mrs. Chetna Kureel', email: 'chetna@sharna.com', phone: '+919876543210', role: 'ADMIN', isBlocked: false };
-        return next();
-      }
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      if (decoded.id === 'admin_dev_01') {
-        req.user = { id: 'admin_dev_01', name: 'Mrs. Chetna Kureel', email: 'chetna@sharna.com', phone: '+919876543210', role: 'ADMIN', isBlocked: false };
-        return next();
-      }
       req.user = await prisma.user.findUnique({
         where: { id: decoded.id },
         select: { id: true, name: true, email: true, phone: true, role: true, isBlocked: true }
@@ -81,5 +51,6 @@ const optionalAuth = async (req, res, next) => {
   }
   next();
 };
+
 
 module.exports = { protect, adminOnly, optionalAuth };
