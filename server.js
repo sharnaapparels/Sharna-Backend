@@ -17,6 +17,7 @@ const reviewRoutes = require('./src/routes/review.routes');
 const contactRoutes = require('./src/routes/contact.routes');
 const adminRoutes = require('./src/routes/admin.routes');
 const uploadRoutes = require('./src/routes/upload.routes');
+const cmsRoutes = require('./src/cms/cms.routes');
 
 const { notFound, errorHandler } = require('./src/middleware/errorHandler');
 
@@ -46,16 +47,34 @@ const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
 app.use(limiter);
 
 // Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+
+// Disable ETag globally — prevents 304 "Not Modified" on all API routes
+app.set('etag', false);
+
+// Force no-cache headers on all dynamic API routes (admin + cms + products)
+const noCacheMiddleware = (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  next();
+};
+app.use('/api/admin', noCacheMiddleware);
+app.use('/api/cms', noCacheMiddleware);
+app.use('/api/products', noCacheMiddleware);
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Logging
 if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
+
+const { seedCatalogIfNeeded } = require('./src/config/seedCatalog');
 
 // Health check
 app.get('/health', async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
+    seedCatalogIfNeeded();
     res.json({ status: 'OK', database: 'PostgreSQL Connected', timestamp: new Date() });
   } catch (error) {
     res.status(500).json({ status: 'ERROR', database: 'Disconnected' });
@@ -73,6 +92,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/cms', cmsRoutes);
 
 // Error handling
 app.use(notFound);
@@ -100,3 +120,4 @@ const startServer = async () => {
 };
 
 startServer();
+// Cache-enabled fast server

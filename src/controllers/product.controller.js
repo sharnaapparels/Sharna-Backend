@@ -1,11 +1,18 @@
 const prisma = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
+const { getCache, setCache, clearProductCache } = require('../utils/productCache');
 
 // GET /api/products
 exports.getAllProducts = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
+
+  const cacheKey = req.originalUrl || '/api/products';
+  const cachedData = getCache(cacheKey);
+  if (cachedData) {
+    return res.json(cachedData);
+  }
 
   const { category, collection, search, minPrice, maxPrice, page = 1, limit = 50 } = req.query;
 
@@ -19,23 +26,35 @@ exports.getAllProducts = async (req, res) => {
     if (maxPrice) where.price.lte = parseFloat(maxPrice);
   }
 
-  const [products, total] = await prisma.$transaction([
-    prisma.product.findMany({
-      where,
-      include: { images: true, variants: true, reviews: { select: { rating: true } } },
-      skip: (page - 1) * limit,
-      take: parseInt(limit),
-      orderBy: { createdAt: 'desc' }
-    }),
-    prisma.product.count({ where })
-  ]);
+  try {
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        include: { images: true, variants: true, reviews: { select: { rating: true } } },
+        skip: (page - 1) * limit,
+        take: parseInt(limit),
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.product.count({ where })
+    ]);
 
-  res.json({ success: true, products, total, page: parseInt(page), pages: Math.ceil(total / limit) });
+    const result = { success: true, products, total, page: parseInt(page), pages: Math.ceil(total / limit) };
+    setCache(cacheKey, result);
+    res.json(result);
+  } catch (err) {
+    console.error("Fetch products error:", err.message);
+    res.status(500).json({ success: false, message: 'Failed to retrieve products' });
+  }
 };
 
 // GET /api/products/:slug (matches slug or id)
 exports.getProductBySlug = async (req, res) => {
   const { slug: identifier } = req.params;
+  const cacheKey = `/api/products/${identifier}`;
+  const cachedData = getCache(cacheKey);
+  if (cachedData) {
+    return res.json(cachedData);
+  }
 
   try {
     const product = await prisma.product.findFirst({
@@ -53,12 +72,15 @@ exports.getProductBySlug = async (req, res) => {
     });
 
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
-    res.json({ success: true, product });
+    const result = { success: true, product };
+    setCache(cacheKey, result);
+    res.json(result);
   } catch (err) {
     console.error("Fetch product failed:", err.message);
     res.status(500).json({ success: false, message: 'Failed to retrieve product' });
   }
 };
+
 
 // POST /api/products (admin)
 exports.createProduct = async (req, res) => {

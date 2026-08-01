@@ -1,50 +1,122 @@
 const prisma = require('../config/database');
+const { clearProductCache } = require('../utils/productCache');
 
 // GET /api/admin/stats
 exports.getDashboardStats = async (req, res) => {
   try {
-    const totalOrdersCount = await prisma.order.count();
-    const pendingOrdersCount = await prisma.order.count({ where: { status: 'PENDING' } });
-    const confirmedOrdersCount = await prisma.order.count({ where: { status: 'CONFIRMED' } });
-    const shippedOrdersCount = await prisma.order.count({ where: { status: 'SHIPPED' } });
-    const deliveredOrdersCount = await prisma.order.count({ where: { status: 'DELIVERED' } });
+    // Run all independent queries in PARALLEL — not sequentially
+    const now = new Date();
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(now.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
 
-    const totalProductsCount = await prisma.product.count();
-    const totalUsersCount = await prisma.user.count({ where: { role: 'USER' } });
+    const [
+      totalOrdersCount,
+      orderStatusCounts,
+      totalProductsCount,
+      totalUsersCount,
+      revenueAggregate,
+      recentOrders,
+      last7DaysOrders,
+      lowStockProducts
+    ] = await Promise.all([
+      // Total orders
+      prisma.order.count(),
 
-    // Aggregate paid revenue
-    const revenueAggregate = await prisma.order.aggregate({
-      _sum: {
-        totalAmount: true
-      },
-      where: {
-        paymentStatus: 'PAID'
-      }
-    });
+      // All order status counts in ONE query using groupBy
+      prisma.order.groupBy({
+        by: ['status'],
+        _count: { status: true }
+      }),
+
+      // Products & Users
+      prisma.product.count(),
+      prisma.user.count({ where: { role: 'USER' } }),
+
+      // Revenue from paid orders
+      prisma.order.aggregate({
+        _sum: { totalAmount: true },
+        where: { paymentStatus: 'PAID' }
+      }),
+
+      // Recent 5 orders
+      prisma.order.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { name: true, email: true, phone: true } },
+          items: { include: { product: true } }
+        }
+      }),
+
+      // All orders from last 7 days in ONE query instead of 7 loops
+      prisma.order.findMany({
+        where: { createdAt: { gte: sevenDaysAgo } },
+        select: { totalAmount: true, createdAt: true }
+      }),
+
+      // Low stock / top products
+      prisma.product.findMany({
+        take: 6,
+        orderBy: { createdAt: 'desc' },
+        include: { variants: true }
+      })
+    ]);
+
+    // Parse status counts from groupBy result
+    const statusMap = {};
+    orderStatusCounts.forEach(s => { statusMap[s.status] = s._count.status; });
 
     const totalRevenue = revenueAggregate._sum.totalAmount || 0;
+    const aov = totalOrdersCount > 0 ? Math.round(totalRevenue / totalOrdersCount) : 0;
 
-    // Fetch 5 most recent orders
-    const recentOrders = await prisma.order.findMany({
-      take: 5,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        user: { select: { name: true, email: true, phone: true } },
-        items: { include: { product: true } }
-      }
-    });
+    // Build last 7 days trend from the single batch query
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dayStr = d.toDateString();
+
+      const dayOrders = last7DaysOrders.filter(o => new Date(o.createdAt).toDateString() === dayStr);
+      const dayRevenue = dayOrders.reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0);
+
+      last7Days.push({
+        label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        date: d.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
+        revenue: dayRevenue,
+        orders: dayOrders.length
+      });
+    }
+
+    // Format top products
+    const topProducts = lowStockProducts.slice(0, 5).map(p => ({
+      id: p.id,
+      title: p.title,
+      price: p.price,
+      image: p.images?.[0]?.url || p.image,
+      category: p.category || 'Luxury Attire',
+      stock: p.variants?.reduce((acc, v) => acc + (v.stock || 0), 0) || 12
+    }));
+
+    // Force no-cache on this response
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
 
     res.json({
       success: true,
       stats: {
         totalRevenue,
+        aov,
         totalOrdersCount,
-        pendingOrdersCount,
-        confirmedOrdersCount,
-        shippedOrdersCount,
-        deliveredOrdersCount,
+        pendingOrdersCount:   statusMap['PENDING']   || 0,
+        confirmedOrdersCount: statusMap['CONFIRMED'] || 0,
+        shippedOrdersCount:   statusMap['SHIPPED']   || 0,
+        deliveredOrdersCount: statusMap['DELIVERED'] || 0,
+        cancelledOrdersCount: statusMap['CANCELLED'] || 0,
         totalProductsCount,
-        totalUsersCount
+        totalUsersCount,
+        salesTrend: last7Days,
+        topProducts
       },
       recentOrders
     });
@@ -193,16 +265,20 @@ exports.createProduct = async (req, res) => {
         slug,
         description: description || '',
         price: parseFloat(price),
-        salePrice: originalPrice ? parseFloat(price) : null,
+        salePrice: originalPrice ? parseFloat(originalPrice) : null,
         category,
         collection: computedCollection,
         isFeatured: isFeatured || false,
+        isPublished: true,  // Always publish products created from admin
         images: formattedImages.length > 0 ? { create: formattedImages } : undefined
       },
       include: { images: true }
     });
 
     console.log(`✅ [PRODUCT CREATED IN DB]: ${product.title} (ID: ${product.id})`);
+    clearProductCache();
+
+    const { colorImages } = req.body;
 
     res.status(201).json({
       success: true,
@@ -212,6 +288,7 @@ exports.createProduct = async (req, res) => {
         isReadyToShip: isReadyToShip || computedCollection === 'ready-to-ship',
         color: color || (colors && colors[0]) || 'Pink',
         colors: Array.isArray(colors) ? colors : (color ? [color] : ['Pink']),
+        colorImages: colorImages || {},
         sizes: Array.isArray(sizes) ? sizes : ['XS', 'S', 'M', 'L', 'XL'],
         stock: stock ? parseInt(stock) : 50
       }
@@ -238,6 +315,7 @@ exports.updateProduct = async (req, res) => {
     if (category !== undefined) updateData.category = category;
     if (computedCollection !== undefined) updateData.collection = computedCollection;
     if (isFeatured !== undefined) updateData.isFeatured = isFeatured;
+    updateData.isPublished = true; // Always publish when saving from admin panel
 
     // Check if product exists in DB first
     const existing = await prisma.product.findUnique({ where: { id } });
@@ -267,6 +345,7 @@ exports.updateProduct = async (req, res) => {
           category: category || 'suit-sets',
           collection: computedCollection || 'festive-collection',
           isFeatured: isFeatured || false,
+          isPublished: true,  // Always publish products created from admin
           images: formattedImages.length > 0 ? { create: formattedImages } : undefined
         },
         include: { images: true }
@@ -274,6 +353,9 @@ exports.updateProduct = async (req, res) => {
     }
 
     console.log(`✅ [PRODUCT SAVED TO DB]: ${product.title} (ID: ${product.id})`);
+    clearProductCache();
+
+    const { colorImages } = req.body;
 
     res.json({
       success: true,
@@ -283,6 +365,7 @@ exports.updateProduct = async (req, res) => {
         isReadyToShip: isReadyToShip !== undefined ? isReadyToShip : product.collection === 'ready-to-ship',
         color: color || (colors && colors[0]) || 'Pink',
         colors: Array.isArray(colors) ? colors : (color ? [color] : ['Pink']),
+        colorImages: colorImages || {},
         stock: stock !== undefined ? parseInt(stock) : 50
       }
     });
@@ -308,6 +391,7 @@ exports.deleteProduct = async (req, res) => {
     }
 
     console.log(`✅ [PRODUCT DELETED]: ID ${id}`);
+    clearProductCache();
     return res.json({ success: true, message: 'Product deleted successfully' });
   } catch (err) {
     console.warn("⚠️ Delete product handled gracefully:", err.message);

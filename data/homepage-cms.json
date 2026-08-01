@@ -1,0 +1,92 @@
+{
+  "heroSlides": [
+    {
+      "id": "slide-1",
+      "title": "WHERE TRADITION MEETS MODERN LUXURY",
+      "subtitle": "HANDWOVEN & HANDSPUN COTTON ATTIRE · CRAFTED FOR THE DISCERNING MUSE",
+      "linkPath": "/collections",
+      "buttonText": "DISCOVER COLLECTION",
+      "imageUrl": "/src/assets/hero-slide-1.png"
+    },
+    {
+      "id": "slide-2",
+      "title": "ARTISANAL EMBROIDERY & QUIET ELEGANCE",
+      "subtitle": "SEASONAL CO-ORD SETS, TUNIC DRESSES & LUXURY SUITS",
+      "linkPath": "/ready-to-ship",
+      "buttonText": "SHOP READY TO SHIP",
+      "imageUrl": "/src/assets/hero-slide-2.png"
+    },
+    {
+      "id": "slide-3",
+      "title": "CELEBRITY CURATION · AS SEEN ON MUSES",
+      "subtitle": "EXPLORE STATEMENT PIECES DESIGNED FOR EVERY OCCASION",
+      "linkPath": "/collections",
+      "buttonText": "EXPLORE CELEBRITY LOOKS",
+      "imageUrl": "/src/assets/hero-slide-3.png"
+    }
+  ],
+  "newArrivalsProductIds": [
+    "na1",
+    "na2",
+    "na3",
+    "na4",
+    "cms9io06q001ovs8w2vhv4b7f",
+    "cms9g6bxn000cvs6wp82pp0a1",
+    "cms9f9bxr0000vs3wooozulyt",
+    "cms9f8y5h0000vsb019oipgxg"
+  ],
+  "celebrityClosetProductIds": [
+    "cms6jti0z000bvsgkp0vqpdyu",
+    "cms81jcxc0001vsukidzq0pcu",
+    "cms81jecy0002vsuketbxelo1",
+    "cms9f8y5h0000vsb019oipgxg",
+    "cms9f9bxr0000vs3wooozulyt"
+  ],
+  "bestSellersProductIds": [
+    "bs1",
+    "bs2",
+    "bs3",
+    "bs4",
+    "cms81jf580005vsuk5alytptl",
+    "cms9f8y5h0000vsb019oipgxg",
+    "cms9f9bxr0000vs3wooozulyt",
+    "cms81jc920000vsukz6pvzri5"
+  ],
+  "readyToShipProductIds": [
+    "s1",
+    "s2",
+    "s3",
+    "s4",
+    "cms81jecy0002vsuketbxelo1",
+    "cms6jtgos0006vsgk0m7opwt4",
+    "cms81jcxc0001vsukidzq0pcu",
+    "cms81jf580005vsuk5alytptl"
+  ],
+  "testimonials": [
+    {
+      "id": "t-1",
+      "quote": "The handwoven silk co-ord set I ordered exceeded every expectation. The texture, drape, and gold embroidery are pure perfection.",
+      "name": "ANANYA S.",
+      "location": "MUMBAI",
+      "rating": 5,
+      "isVerified": true
+    },
+    {
+      "id": "t-2",
+      "quote": "SHARNA's ready to ship delivery got my cocktail dress delivered in less than 24 hours. Phenomenal luxury craftsmanship!",
+      "name": "PRIYA K.",
+      "location": "DELHI",
+      "rating": 5,
+      "isVerified": true
+    },
+    {
+      "id": "t-3",
+      "quote": "Absolute luxury. The fit and subtle elegance of the festive suit collection made me feel like royalty.",
+      "name": "RITU M.",
+      "location": "BANGALORE",
+      "rating": 5,
+      "isVerified": true
+    }
+  ],
+  "updatedAt": "2026-07-31T23:20:08.507Z"
+}
