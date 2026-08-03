@@ -99,6 +99,7 @@ exports.createProduct = async (req, res) => {
     include: { images: true, variants: true }
   });
 
+  clearProductCache();
   res.status(201).json({ success: true, product });
 };
 
@@ -109,11 +110,13 @@ exports.updateProduct = async (req, res) => {
     data: req.body,
     include: { images: true, variants: true }
   });
+  clearProductCache();
   res.json({ success: true, product });
 };
 
 // DELETE /api/products/:id (admin)
 exports.deleteProduct = async (req, res) => {
   await prisma.product.delete({ where: { id: req.params.id } });
+  clearProductCache();
   res.json({ success: true, message: 'Product deleted' });
 };
