@@ -36,7 +36,7 @@ app.use(cors({
     if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
       callback(null, true);
     } else {
-      callback(null, true); // Allow during production transition
+      callback(new Error('CORS Policy: Access denied for this origin.'));
     }
   },
   credentials: true
@@ -46,8 +46,9 @@ app.use(cors({
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
 app.use(limiter);
 
-// Body parsing
-app.use(express.json({ limit: '50mb' }));
+// Body parsing — global 100kb limit for API protection against payload memory exhaustion
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
 // Disable ETag globally — prevents 304 "Not Modified" on all API routes
 app.set('etag', false);
@@ -63,7 +64,6 @@ const noCacheMiddleware = (req, res, next) => {
 app.use('/api/admin', noCacheMiddleware);
 app.use('/api/cms', noCacheMiddleware);
 app.use('/api/products', noCacheMiddleware);
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Logging
 if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));

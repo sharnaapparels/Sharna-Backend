@@ -36,11 +36,10 @@
     "cms9f8y5h0000vsb019oipgxg"
   ],
   "celebrityClosetProductIds": [
-    "cms6jti0z000bvsgkp0vqpdyu",
-    "cms81jcxc0001vsukidzq0pcu",
-    "cms81jecy0002vsuketbxelo1",
+    "cms9f9bxr0000vs3wooozulyt",
     "cms9f8y5h0000vsb019oipgxg",
-    "cms9f9bxr0000vs3wooozulyt"
+    "cms81jecy0002vsuketbxelo1",
+    "cms81jedf0003vsukr4j84wlz"
   ],
   "bestSellersProductIds": [
     "bs1",
@@ -88,5 +87,5 @@
       "isVerified": true
     }
   ],
-  "updatedAt": "2026-07-31T23:20:08.507Z"
+  "updatedAt": "2026-08-01T15:19:00.800Z"
 }

@@ -25,7 +25,13 @@ exports.createOrder = async (req, res) => {
       razorpayOrder = await razorpay.orders.create(options);
     } catch (rzpErr) {
       console.error("Razorpay order creation error:", rzpErr);
-      // Generate a mock razorpay order if the credentials are not working or invalid
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Payment gateway failed to initialize order. Please try again.' 
+        });
+      }
+      // Development testing fallback only
       razorpayOrder = {
         id: `order_mock_${Date.now()}`,
         amount: options.amount,
@@ -49,7 +55,7 @@ exports.createOrder = async (req, res) => {
             }
           });
 
-          // Fallback: if not found, just grab any first product in the DB to satisfy foreign key
+          // Fallback: if not found, grab first product in the DB to satisfy foreign key
           if (!dbProduct) {
             dbProduct = await prisma.product.findFirst();
           }
@@ -91,7 +97,10 @@ exports.createOrder = async (req, res) => {
       });
       dbOrderId = order.id;
     } catch (dbErr) {
-      console.error("Database order creation failed, fallback to mock order ID:", dbErr);
+      console.error("Database order creation failed:", dbErr);
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(500).json({ success: false, message: 'Failed to record order details.' });
+      }
     }
 
     res.json({
@@ -222,9 +231,18 @@ const triggerInvoiceNotifications = async (orderId) => {
 exports.verifyPayment = async (req, res) => {
   const { razorpayOrderId, razorpayPaymentId, razorpaySignature, orderId } = req.body;
 
-  // Handle mock order fallbacks
-  if ((razorpayOrderId && razorpayOrderId.startsWith('order_mock_')) || (orderId && orderId.startsWith('db_mock_'))) {
-    // If orderId is a real database order cuid, update it in the database and trigger notifications!
+  const isMockRequest = (razorpayOrderId && razorpayOrderId.startsWith('order_mock_')) || (orderId && orderId.startsWith('db_mock_'));
+
+  // Strictly block mock payment exploits in production
+  if (process.env.NODE_ENV === 'production' && isMockRequest) {
+    return res.status(400).json({
+      success: false,
+      message: 'Payment verification failed: Mock payment processing is prohibited in production.'
+    });
+  }
+
+  // Development testing mode fallback
+  if (isMockRequest) {
     if (orderId && !orderId.startsWith('db_mock_')) {
       try {
         await prisma.order.update({
@@ -249,18 +267,37 @@ exports.verifyPayment = async (req, res) => {
     });
   }
 
+  // Validate strict presence of Razorpay parameters
+  if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+    return res.status(400).json({
+      success: false,
+      message: 'Payment verification failed: Missing required Razorpay credentials.'
+    });
+  }
+
+  const razorpaySecret = process.env.RAZORPAY_KEY_SECRET;
+  if (!razorpaySecret) {
+    return res.status(500).json({
+      success: false,
+      message: 'Payment verification failed: Missing Razorpay Key Secret configuration.'
+    });
+  }
+
   const body = razorpayOrderId + '|' + razorpayPaymentId;
   const expectedSignature = crypto
-    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET || 'NtnUFz0fuIhdCB1fBnnLtdmR')
+    .createHmac('sha256', razorpaySecret)
     .update(body.toString())
     .digest('hex');
 
   if (expectedSignature !== razorpaySignature) {
-    return res.status(400).json({ success: false, message: 'Payment verification failed' });
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Payment verification failed: Invalid HMAC signature.' 
+    });
   }
 
   try {
-    // Update order status
+    // Update order status securely
     const order = await prisma.order.update({
       where: { id: orderId },
       data: {
@@ -271,19 +308,15 @@ exports.verifyPayment = async (req, res) => {
       }
     });
 
-    // Trigger Notifications
+    // Trigger Notifications & Auto-Shipment
     triggerInvoiceNotifications(orderId);
 
     res.json({ success: true, order });
   } catch (dbErr) {
-    console.error("Database payment verification update failed, fallback to success:", dbErr);
-    res.json({
-      success: true,
-      order: {
-        id: orderId,
-        paymentStatus: 'PAID',
-        status: 'CONFIRMED'
-      }
+    console.error("Database payment verification update failed:", dbErr);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to record payment verification in database.'
     });
   }
 };
