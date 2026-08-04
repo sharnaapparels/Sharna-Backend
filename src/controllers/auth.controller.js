@@ -174,6 +174,37 @@ exports.verifyOtp = async (req, res) => {
   });
 };
 
+// Helper for case-insensitive email and multi-format phone lookup across all devices
+const findUserByIdentifier = async (rawIdentifier) => {
+  if (!rawIdentifier) return null;
+  const trimmed = rawIdentifier.trim();
+  const lower = trimmed.toLowerCase();
+  const digitsOnly = trimmed.replace(/\D/g, '');
+  const tenDigitPhone = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
+
+  const phoneVariations = Array.from(new Set([
+    trimmed,
+    digitsOnly,
+    tenDigitPhone,
+    `+91${tenDigitPhone}`,
+    `91${tenDigitPhone}`
+  ])).filter(Boolean);
+
+  return await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: lower },
+        { email: trimmed },
+        { phone: { in: phoneVariations } }
+      ]
+    },
+    orderBy: [
+      { isVerified: 'desc' },
+      { createdAt: 'desc' }
+    ]
+  });
+};
+
 // ─── SEND LOGIN OTP ─────────────────────────────────────────────────────────
 // POST /api/auth/send-otp
 exports.sendLoginOtp = async (req, res) => {
@@ -189,7 +220,7 @@ exports.sendLoginOtp = async (req, res) => {
     return res.status(429).json({ success: false, message: lockoutMsg });
   }
 
-  const user = await prisma.user.findUnique({ where: { phone } });
+  const user = await findUserByIdentifier(phone);
 
   if (!user) {
     return res.status(404).json({ success: false, message: 'No account found with this number. Please sign up first.' });
@@ -204,7 +235,7 @@ exports.sendLoginOtp = async (req, res) => {
   const otpExpires = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
   await prisma.user.update({
-    where: { phone },
+    where: { id: user.id },
     data: { otp: hashedOtp, otpExpires, otpPurpose: 'LOGIN' }
   });
 
@@ -213,7 +244,7 @@ exports.sendLoginOtp = async (req, res) => {
   console.log(`[TESTING OTP] Login OTP for ${phone}: ${otp}`);
   console.log(`=============================================\n`);
 
-  await sendWhatsAppOTPText(phone, otp);
+  await sendWhatsAppOTPText(user.phone || phone, otp);
 
   res.json({
     success: true,
@@ -232,7 +263,7 @@ exports.loginWithOtp = async (req, res) => {
     return res.status(429).json({ success: false, message: lockoutMsg });
   }
 
-  const user = await prisma.user.findUnique({ where: { phone } });
+  const user = await findUserByIdentifier(phone);
 
   if (!user || user.isBlocked) {
     return res.status(401).json({ success: false, message: 'Account not found or blocked' });
@@ -258,7 +289,7 @@ exports.loginWithOtp = async (req, res) => {
 
   // Clear OTP after use
   const loggedUser = await prisma.user.update({
-    where: { phone },
+    where: { id: user.id },
     data: { otp: null, otpExpires: null, otpPurpose: null, isVerified: true }
   });
 
@@ -273,27 +304,24 @@ exports.loginWithOtp = async (req, res) => {
 // ─── LOGIN WITH PASSWORD ─────────────────────────────────────────────────────
 // POST /api/auth/login
 exports.login = async (req, res) => {
-  const identifier = (req.body.identifier || req.body.email || req.body.phone || '').trim();
+  const rawIdentifier = (req.body.identifier || req.body.email || req.body.phone || '').trim();
   const password = (req.body.password || '').trim();
 
-  if (!identifier || !password) {
+  if (!rawIdentifier || !password) {
     return res.status(400).json({ success: false, message: 'Email/phone and password are required' });
   }
 
-  // Admin Credentials Recognition
+  const lowerIdentifier = rawIdentifier.toLowerCase();
+  const digitsOnly = rawIdentifier.replace(/\D/g, '');
+  const tenDigitPhone = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
+
+  // Admin Credentials Recognition (case-insensitive & format-flexible)
   const isAdminCredential = 
-    (identifier === 'sharnaapparels@gmail.com' || identifier === 'chetna@sharna.com' || identifier === 'admin@sharna.com' || identifier === '+919876543210' || identifier === '9876543210') &&
+    (lowerIdentifier === 'sharnaapparels@gmail.com' || lowerIdentifier === 'chetna@sharna.com' || lowerIdentifier === 'admin@sharna.com' || tenDigitPhone === '9876543210') &&
     password === 'admin123';
 
-  // Find user by email OR phone
-  let user = await prisma.user.findFirst({
-    where: {
-      OR: [
-        { email: identifier },
-        { phone: identifier }
-      ]
-    }
-  });
+  // Find user by email OR phone using flexible format matcher
+  let user = await findUserByIdentifier(rawIdentifier);
 
   // If user doesn't exist in DB but matches admin credentials, auto-provision admin user in PostgreSQL!
   if (!user && isAdminCredential) {
@@ -381,6 +409,16 @@ exports.updateProfile = async (req, res) => {
 // POST /api/auth/resend-otp
 exports.resendOtp = async (req, res) => {
   const { phone } = req.body;
+
+  if (!phone) {
+    return res.status(400).json({ success: false, message: 'Phone number is required' });
+  }
+
+  // Rate-limit check to prevent WhatsApp API spam
+  const lockoutMsg = checkOtpLockout(phone);
+  if (lockoutMsg) {
+    return res.status(429).json({ success: false, message: lockoutMsg });
+  }
 
   const user = await prisma.user.findUnique({ where: { phone } });
 

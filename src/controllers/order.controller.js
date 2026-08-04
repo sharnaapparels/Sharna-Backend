@@ -22,25 +22,54 @@ exports.getOrderById = async (req, res) => {
 
 // POST /api/orders (create from cart after payment)
 exports.createOrder = async (req, res) => {
-  const { items, totalAmount, shippingAddress, razorpayOrderId } = req.body;
+  const { items, shippingAddress, razorpayOrderId } = req.body;
+
+  let calculatedSubtotal = 0;
+  const verifiedOrderItems = [];
+
+  if (items && Array.isArray(items)) {
+    for (const item of items) {
+      let dbProd = await prisma.product.findFirst({
+        where: {
+          OR: [
+            { id: item.productId || item.id || '' },
+            { title: item.title || '' }
+          ]
+        }
+      });
+
+      const unitPrice = dbProd ? (dbProd.salePrice || dbProd.price) : (Number(item.price) || 0);
+      const safeQty = Math.max(1, Math.floor(Number(item.quantity) || 1));
+      calculatedSubtotal += unitPrice * safeQty;
+
+      if (dbProd) {
+        verifiedOrderItems.push({
+          productId: dbProd.id,
+          quantity: safeQty,
+          price: unitPrice,
+          size: item.size || 'S',
+          color: item.color || 'Default'
+        });
+      }
+    }
+  }
+
+  const verifiedShipping = calculatedSubtotal > 10000 ? 0 : 500;
+  const verifiedTotal = calculatedSubtotal + verifiedShipping;
 
   const order = await prisma.order.create({
     data: {
       userId: req.user.id,
-      totalAmount,
+      totalAmount: verifiedTotal,
+      shippingAmount: verifiedShipping,
       razorpayOrderId,
       shippingStreet: shippingAddress?.street,
       shippingCity: shippingAddress?.city,
       shippingState: shippingAddress?.state,
       shippingPostalCode: shippingAddress?.postalCode,
+      shippingCountry: shippingAddress?.country || 'India',
       items: {
-        create: items.map(i => ({
-          productId: i.productId,
-          quantity: i.quantity,
-          price: i.price,
-          size: i.size,
-          color: i.color
-        }))
+        create: verifiedOrderItems
       }
     },
     include: { items: true }

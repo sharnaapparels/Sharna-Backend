@@ -41,11 +41,10 @@ exports.createOrder = async (req, res) => {
 
     let dbOrderId = `db_mock_${Date.now()}`;
     try {
-      // Find matching products in DB for the order items
+      let calculatedSubtotal = 0;
       const orderItemsToCreate = [];
       if (items && Array.isArray(items)) {
         for (const item of items) {
-          // Look up product in DB by ID or title
           let dbProduct = await prisma.product.findFirst({
             where: {
               OR: [
@@ -55,16 +54,19 @@ exports.createOrder = async (req, res) => {
             }
           });
 
-          // Fallback: if not found, grab first product in the DB to satisfy foreign key
           if (!dbProduct) {
             dbProduct = await prisma.product.findFirst();
           }
 
           if (dbProduct) {
+            const unitPrice = dbProduct.salePrice || dbProduct.price;
+            const safeQty = Math.max(1, Math.floor(Number(item.quantity) || 1));
+            calculatedSubtotal += unitPrice * safeQty;
+
             orderItemsToCreate.push({
               productId: dbProduct.id,
-              quantity: item.quantity || 1,
-              price: Number(item.price) || 0,
+              quantity: safeQty,
+              price: unitPrice,
               size: item.selectedSize || item.size || 'S',
               color: item.selectedColor || item.color || 'Default'
             });
@@ -72,11 +74,15 @@ exports.createOrder = async (req, res) => {
         }
       }
 
+      const verifiedShipping = calculatedSubtotal > 10000 ? 0 : 500;
+      const verifiedTotal = calculatedSubtotal > 0 ? (calculatedSubtotal + verifiedShipping) : amount;
+
       // Create order in DB
       const order = await prisma.order.create({
         data: {
           userId: req.user.id,
-          totalAmount: amount,
+          totalAmount: verifiedTotal,
+          shippingAmount: verifiedShipping,
           razorpayOrderId: razorpayOrder.id,
           paymentStatus: 'PENDING',
           status: 'PENDING',

@@ -183,6 +183,7 @@ model Order {
   @@index([userId])
   @@index([createdAt])
   @@index([status])
+  @@index([status, createdAt])
 }
 
 enum OrderStatus {
