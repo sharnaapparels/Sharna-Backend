@@ -315,13 +315,33 @@ exports.login = async (req, res) => {
   const digitsOnly = rawIdentifier.replace(/\D/g, '');
   const tenDigitPhone = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
 
-  // Admin Credentials Recognition (case-insensitive & format-flexible)
+  // Admin & Designated User Credentials Recognition (case-insensitive & format-flexible)
   const isAdminCredential = 
     (lowerIdentifier === 'sharnaapparels@gmail.com' || lowerIdentifier === 'chetna@sharna.com' || lowerIdentifier === 'admin@sharna.com' || tenDigitPhone === '9876543210') &&
     password === 'admin123';
 
+  const isDefaultUserCredential = tenDigitPhone === '9324503975' && password === '123456';
+
   // Find user by email OR phone using flexible format matcher
   let user = await findUserByIdentifier(rawIdentifier);
+
+  // Auto-provision default user 9324503975 if not present in DB
+  if (!user && isDefaultUserCredential) {
+    try {
+      const hashedPassword = await bcrypt.hash('123456', 10);
+      user = await prisma.user.create({
+        data: {
+          name: 'Sharna Customer',
+          phone: '+919324503975',
+          password: hashedPassword,
+          role: 'USER',
+          isVerified: true
+        }
+      });
+    } catch (createErr) {
+      console.warn("Auto-provision user warning:", createErr);
+    }
+  }
 
   // If user doesn't exist in DB but matches admin credentials, auto-provision admin user in PostgreSQL!
   if (!user && isAdminCredential) {
