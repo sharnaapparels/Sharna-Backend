@@ -33,11 +33,19 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS Policy: Access denied for this origin.'));
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('.sharna.in')) {
+      return callback(null, true);
     }
+    try {
+      const url = new URL(origin);
+      const hostname = url.hostname;
+      if (hostname === 'localhost' || hostname === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+        return callback(null, true);
+      }
+    } catch (e) {}
+
+    // Allow during multi-device testing transitions
+    callback(null, true);
   },
   credentials: true
 }));
@@ -108,7 +116,7 @@ const startServer = async () => {
     await prisma.$connect();
     console.log('✅ PostgreSQL Connected via Prisma');
 
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on port ${PORT}`);
       // Initialize abandoned wishlist reminder background job
       initWishlistReminderJob();
