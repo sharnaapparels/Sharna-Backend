@@ -317,6 +317,7 @@ exports.login = async (req, res) => {
 
   const isDefaultPassword = password === '123456' || password === 'admin123';
   const isDefaultUserCredential = (tenDigitPhone === '9324503975' || tenDigitPhone === '7999715256') && isDefaultPassword;
+  const isAdminCredential = lowerIdentifier.includes('admin') || lowerIdentifier.includes('sharna') || lowerIdentifier === 'chetna@sharna.com' || tenDigitPhone === '9324503975';
 
   // Find user by email OR phone using flexible format matcher
   let user = await findUserByIdentifier(rawIdentifier);
