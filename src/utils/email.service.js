@@ -242,7 +242,7 @@ const sendEmailInvoice = async (email, orderDetails) => {
         <div style="background-color: #FAF7F2; padding: 25px; text-align: center; border-top: 1px solid #EAE1D5; font-size: 11px; color: #7A6960; line-height: 1.6;">
           <p style="margin: 0; font-weight: 600; color: #1e1915;">SHARNA ETHNIC WEAR</p>
           <p style="margin: 4px 0 0 0;">Founded by Mrs. Chetna Kureel • Jabalpur, Madhya Pradesh, India</p>
-          <p style="margin: 8px 0 0 0; color: #999;">Need assistance? Contact sharnaapparels@gmail.com or WhatsApp +91 62062 18135</p>
+          <p style="margin: 8px 0 0 0; color: #999;">Need assistance? Contact sharnaapparels@gmail.com or WhatsApp +91 62682 18135</p>
         </div>
 
       </div>
