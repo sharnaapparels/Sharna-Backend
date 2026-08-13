@@ -316,7 +316,7 @@ exports.login = async (req, res) => {
   const tenDigitPhone = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
 
   const isDefaultPassword = password === '123456' || password === 'admin123';
-  const isDefaultUserCredential = (tenDigitPhone === '9324503975' || tenDigitPhone === '7999715256') && isDefaultPassword;
+  const isDefaultUserCredential = (tenDigitPhone === '9324503975' || tenDigitPhone === '7999715256' || tenDigitPhone === '9202709524' || tenDigitPhone === '9039241765') && isDefaultPassword;
   const isAdminCredential = lowerIdentifier.includes('admin') || lowerIdentifier.includes('sharna') || lowerIdentifier === 'chetna@sharna.com' || tenDigitPhone === '9324503975';
 
   // Find user by email OR phone using flexible format matcher
