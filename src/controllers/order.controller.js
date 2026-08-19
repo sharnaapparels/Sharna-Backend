@@ -76,3 +76,45 @@ exports.createOrder = async (req, res) => {
   });
   res.status(201).json({ success: true, order });
 };
+
+// GET /api/orders/:id/invoice.pdf
+exports.downloadInvoicePDF = async (req, res) => {
+  const { id } = req.params;
+  const { generateInvoicePDFBuffer } = require('../utils/pdfInvoice.service');
+
+  try {
+    let order = await prisma.order.findFirst({
+      where: {
+        OR: [
+          { id: id },
+          { orderNumber: id }
+        ]
+      },
+      include: {
+        user: { select: { name: true, email: true, phone: true } },
+        shippingAddress: true,
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    const orderNumber = String(order.orderNumber || order.id || 'SHARNA').slice(-8).toUpperCase();
+    const pdfBuffer = await generateInvoicePDFBuffer(order);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="SHARNA-Tax-Invoice-${orderNumber}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    return res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error generating PDF invoice:', error);
+    return res.status(500).json({ success: false, message: 'Failed to generate PDF invoice' });
+  }
+};
+

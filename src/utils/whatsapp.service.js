@@ -58,7 +58,8 @@ const sendWhatsAppOTP = async (phone, otp) => {
 
 /**
  * Send Order Confirmation with Attached PDF Invoice via Meta WhatsApp Cloud API
- * Uses 'sharna_order_invoice' (with PDF Document header) or falls back to 'sharna_order_confirmation'
+ * 1. Sends the official approved 'sharna_order_confirmation' template message
+ * 2. Sends the direct downloadable PDF Tax Invoice Document attachment
  */
 const sendWhatsAppOrderInvoicePDF = async (phone, orderDetails, pdfUrl) => {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '1286005934592878';
@@ -66,64 +67,46 @@ const sendWhatsAppOrderInvoicePDF = async (phone, orderDetails, pdfUrl) => {
 
   let formattedPhone = String(phone).replace(/\D/g, '');
   if (formattedPhone.length === 10) formattedPhone = '91' + formattedPhone;
+  if (formattedPhone.startsWith('+')) formattedPhone = formattedPhone.slice(1);
 
   const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
-
-  const customerName = String(orderDetails.shippingName || orderDetails.userName || 'Valued Patron').split(' ')[0];
-  const orderId = String(orderDetails.orderId || orderDetails.id || 'SHARNA').slice(-8).toUpperCase();
+  const rawId = orderDetails.id || orderDetails.orderId || orderDetails.orderNumber || 'SHARNA';
+  const orderId = String(rawId).slice(-8).toUpperCase();
   const totalAmt = String(Math.round(Number(orderDetails.totalAmount || 0)));
-  const documentUrl = pdfUrl || orderDetails.pdfUrl;
 
-  // If a PDF document URL is available, send with Document Header
-  if (documentUrl) {
+  // 1. Send Order Confirmation Template Message
+  await sendWhatsAppOrderConfirmation(phone, orderDetails);
+
+  // 2. Deliver the Direct PDF Tax Invoice Document
+  const documentUrl = pdfUrl || orderDetails.pdfUrl || `https://sharna-backend-production.up.railway.app/api/orders/${rawId}/invoice.pdf`;
+
+  try {
     const docPayload = {
       messaging_product: 'whatsapp',
+      recipient_type: 'individual',
       to: formattedPhone,
-      type: 'template',
-      template: {
-        name: 'sharna_order_invoice',
-        language: { code: 'en' },
-        components: [
-          {
-            type: 'header',
-            parameters: [
-              {
-                type: 'document',
-                document: {
-                  link: documentUrl,
-                  filename: `SHARNA-Tax-Invoice-${orderId}.pdf`
-                }
-              }
-            ]
-          },
-          {
-            type: 'body',
-            parameters: [
-              { type: 'text', text: customerName }, // {{1}} Name
-              { type: 'text', text: orderId },      // {{2}} Order #
-              { type: 'text', text: totalAmt }       // {{3}} Amount
-            ]
-          }
-        ]
+      type: 'document',
+      document: {
+        link: documentUrl,
+        caption: `📄 Official Tax Invoice · Order #${orderId} · SHARNA Luxury`,
+        filename: `SHARNA-Tax-Invoice-${orderId}.pdf`
       }
     };
 
-    try {
-      const response = await axios.post(url, docPayload, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      console.log(`✅ WhatsApp Order Invoice PDF sent to ${formattedPhone}`);
-      return { success: true, messageId: response.data.messages?.[0]?.id };
-    } catch (error) {
-      console.warn('⚠️ Document template fallback to standard confirmation:', error.response?.data?.error?.message || error.message);
-    }
-  }
+    const docRes = await axios.post(url, docPayload, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
 
-  // Fallback to text order confirmation template
-  return sendWhatsAppOrderConfirmation(phone, orderDetails);
+    console.log(`✅ WhatsApp Order Invoice PDF attachment sent to ${formattedPhone} (ID: ${docRes.data.messages?.[0]?.id})`);
+    return { success: true, messageId: docRes.data.messages?.[0]?.id };
+  } catch (error) {
+    const errData = error.response?.data;
+    console.warn('⚠️ WhatsApp Direct Document error (non-blocking):', errData || error.message);
+    return { success: false, error: errData?.error?.message || error.message };
+  }
 };
 
 /**
