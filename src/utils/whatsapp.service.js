@@ -91,8 +91,7 @@ const formatCustomerName = (orderDetails = {}) => {
 
 /**
  * Send Order Confirmation with Attached PDF Invoice via Meta WhatsApp Cloud API
- * 1. Sends the official approved 'sharna_order_confirmation' template message
- * 2. Sends the direct downloadable PDF Tax Invoice Document attachment
+ * Uses approved 'sharna_order_invoice' template (Document Header + Name, Order#, Amount body)
  */
 const sendWhatsAppOrderInvoicePDF = async (phone, orderDetails, pdfUrl) => {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '1286005934592878';
@@ -106,40 +105,60 @@ const sendWhatsAppOrderInvoicePDF = async (phone, orderDetails, pdfUrl) => {
   const rawId = orderDetails.id || orderDetails.orderId || orderDetails.orderNumber || 'SHARNA';
   const orderId = String(rawId).slice(-8).toUpperCase();
   const totalAmt = String(Math.round(Number(orderDetails.totalAmount || 0)));
+  const customerName = formatCustomerName(orderDetails);
 
-  // 1. Send Order Confirmation Template Message
-  await sendWhatsAppOrderConfirmation(phone, orderDetails);
-
-  // 2. Deliver the Direct PDF Tax Invoice Document
   const documentUrl = pdfUrl || orderDetails.pdfUrl || `https://sharna-backend-production.up.railway.app/api/orders/${rawId}/invoice.pdf`;
 
+  // 1. Primary Method: Meta Approved 'sharna_order_invoice' Template with PDF Document Header
   try {
-    const docPayload = {
+    const templateDocPayload = {
       messaging_product: 'whatsapp',
-      recipient_type: 'individual',
       to: formattedPhone,
-      type: 'document',
-      document: {
-        link: documentUrl,
-        caption: `📄 Official Tax Invoice · Order #${orderId} · SHARNA Luxury`,
-        filename: `SHARNA-Tax-Invoice-${orderId}.pdf`
+      type: 'template',
+      template: {
+        name: 'sharna_order_invoice',
+        language: { code: 'en' },
+        components: [
+          {
+            type: 'header',
+            parameters: [
+              {
+                type: 'document',
+                document: {
+                  link: documentUrl,
+                  filename: `SHARNA-Tax-Invoice-${orderId}.pdf`
+                }
+              }
+            ]
+          },
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: customerName }, // {{1}} Name (e.g. "Mrs. Swati")
+              { type: 'text', text: orderId },      // {{2}} Order #
+              { type: 'text', text: totalAmt }       // {{3}} Amount
+            ]
+          }
+        ]
       }
     };
 
-    const docRes = await axios.post(url, docPayload, {
+    const response = await axios.post(url, templateDocPayload, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json'
       }
     });
 
-    console.log(`✅ WhatsApp Order Invoice PDF attachment sent to ${formattedPhone} (ID: ${docRes.data.messages?.[0]?.id})`);
-    return { success: true, messageId: docRes.data.messages?.[0]?.id };
+    console.log(`✅ WhatsApp Order Invoice PDF Template sent to ${formattedPhone} (Message ID: ${response.data.messages?.[0]?.id})`);
+    return { success: true, messageId: response.data.messages?.[0]?.id };
   } catch (error) {
     const errData = error.response?.data;
-    console.warn('⚠️ WhatsApp Direct Document error (non-blocking):', errData || error.message);
-    return { success: false, error: errData?.error?.message || error.message };
+    console.warn('⚠️ sharna_order_invoice template error, falling back to confirmation template:', errData || error.message);
   }
+
+  // 2. Fallback: Send standard text confirmation
+  return sendWhatsAppOrderConfirmation(phone, orderDetails);
 };
 
 /**
