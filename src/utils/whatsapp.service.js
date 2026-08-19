@@ -57,6 +57,39 @@ const sendWhatsAppOTP = async (phone, otp) => {
 };
 
 /**
+ * Helper to safely format clean customer salutation/name
+ * Handles prefixes like "Mrs. Swati Kureel" -> "Mrs. Swati", "Swati Kureel" -> "Swati"
+ */
+const formatCustomerName = (orderDetails = {}) => {
+  const rawName = String(
+    orderDetails.shippingName || 
+    orderDetails.userName || 
+    orderDetails.user?.name || 
+    orderDetails.shippingAddress?.fullName || 
+    'Valued Patron'
+  ).trim();
+
+  if (!rawName || rawName.toLowerCase() === 'valued patron') {
+    return 'Valued Patron';
+  }
+
+  const parts = rawName.split(/\s+/).filter(Boolean);
+  const titlePrefixes = ['mr', 'mr.', 'mrs', 'mrs.', 'ms', 'ms.', 'dr', 'dr.', 'shri', 'smt', 'prof', 'prof.'];
+
+  // If first word is a salutation (e.g. Mrs., Mr., Dr.), combine it with the actual name
+  if (parts.length >= 2 && titlePrefixes.includes(parts[0].toLowerCase())) {
+    return `${parts[0]} ${parts[1]}`;
+  }
+
+  // If full name, return first name
+  if (parts.length > 0) {
+    return parts[0];
+  }
+
+  return rawName;
+};
+
+/**
  * Send Order Confirmation with Attached PDF Invoice via Meta WhatsApp Cloud API
  * 1. Sends the official approved 'sharna_order_confirmation' template message
  * 2. Sends the direct downloadable PDF Tax Invoice Document attachment
@@ -122,7 +155,7 @@ const sendWhatsAppOrderConfirmation = async (phone, orderDetails) => {
 
   const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
 
-  const customerName = String(orderDetails.shippingName || orderDetails.userName || 'Valued Patron').split(' ')[0];
+  const customerName = formatCustomerName(orderDetails);
   const orderId = String(orderDetails.orderId || orderDetails.id || 'SHARNA').slice(-8).toUpperCase();
   const totalAmt = String(Math.round(Number(orderDetails.totalAmount || 0)));
 
@@ -137,7 +170,7 @@ const sendWhatsAppOrderConfirmation = async (phone, orderDetails) => {
         {
           type: 'body',
           parameters: [
-            { type: 'text', text: customerName }, // {{1}} Name
+            { type: 'text', text: customerName }, // {{1}} Name (e.g. "Mrs. Swati" or "Swati")
             { type: 'text', text: orderId },      // {{2}} Order #
             { type: 'text', text: totalAmt }       // {{3}} Amount
           ]
