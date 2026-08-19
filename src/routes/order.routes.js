@@ -3,9 +3,9 @@ const router = express.Router();
 const orderController = require('../controllers/order.controller');
 const { protect } = require('../middleware/auth.middleware');
 
-// Public Invoice PDF download route (accessible by WhatsApp document fetch & customers)
+// Public Invoice download & view routes
 router.get('/:id/invoice.pdf', orderController.downloadInvoicePDF);
-router.get('/:id/invoice', orderController.downloadInvoicePDF);
+router.get('/:id/invoice', orderController.viewInvoiceHTML);
 
 // Protected routes
 router.use(protect);
