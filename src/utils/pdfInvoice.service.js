@@ -1,13 +1,15 @@
 const PDFDocument = require('pdfkit');
+const path = require('path');
+const fs = require('fs');
 
 /**
- * Generate Exact Dark-Header Luxury SHARNA Tax Invoice PDF
- * Matches the dark-header Haute Couture design template
+ * Generate 100% Pixel-Perfect Matching Luxury SHARNA Tax Invoice PDF
+ * Exact replica of the Parchment/Gold/Burgundy design template
  */
 const generateInvoicePDFBuffer = (order = {}) => {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument({ margin: 40, size: 'A4' });
+      const doc = new PDFDocument({ margin: 0, size: 'A4' });
       const buffers = [];
 
       doc.on('data', buffers.push.bind(buffers));
@@ -25,148 +27,285 @@ const generateInvoicePDFBuffer = (order = {}) => {
         } catch (e) {}
       }
 
-      const rawId = order.id || order.orderNumber || 'OP2L5ILI';
-      const orderNumber = String(rawId).slice(-8).toUpperCase();
+      const orderNumber = order.id || order.orderNumber || 'cmt0oadp90001pq01op2l5ili';
+      const invoiceNo = `#${orderNumber}`;
       const invoiceDate = new Date(order.createdAt || Date.now()).toLocaleDateString('en-IN', {
         day: 'numeric',
         month: 'short',
         year: 'numeric'
       });
 
-      const customerName = String(parsedNotes.shippingName || order.shippingAddress?.fullName || order.user?.name || 'MR.PRIYANSHU LOKHANDE').toUpperCase();
-      const customerPhone = parsedNotes.shippingPhone || order.shippingAddress?.phone || order.user?.phone || '+917999715256';
+      const customerName = parsedNotes.shippingName || order.shippingAddress?.fullName || order.user?.name || 'Mr.priyanshu lokhande';
+      const customerEmail = parsedNotes.shippingEmail || order.user?.email || 'priyanshulokhande72@gmail.com';
+      const customerPhone = parsedNotes.shippingPhone || order.shippingAddress?.phone || order.user?.phone || '7999715256';
 
       const street = order.shippingAddress?.streetAddress || order.shippingStreet || 'At, post';
       const city = order.shippingAddress?.city || order.shippingCity || 'Khedi Sawligarh';
       const state = order.shippingAddress?.state || order.shippingState || 'Madhya Pradesh';
       const pincode = order.shippingAddress?.postalCode || order.shippingPostalCode || '460225';
-      const fullAddress = `${street}, ${city}, ${state}, ${pincode}`;
+      const country = order.shippingAddress?.country || order.shippingCountry || 'India';
 
       const totalAmount = Number(order.totalAmount || 18500);
       const shippingAmount = Number(order.shippingAmount || 0);
-      const subtotal = totalAmount - shippingAmount;
+      const subtotalAmount = totalAmount - shippingAmount;
 
-      const formatPrice = (val) => 'Rs. ' + Math.round(Number(val || 0)).toLocaleString('en-IN');
+      const gstRate = 0.12;
+      const taxableValue = Math.round(subtotalAmount / (1 + gstRate));
+      const totalGst = subtotalAmount - taxableValue;
 
-      // ── 1. DARK LUXURY HEADER (Full Width Band) ──
-      doc.rect(0, 0, pageWidth, 115).fill('#1A1614');
+      const formatINR = (val) => 'Rs. ' + Math.round(Number(val || 0)).toLocaleString('en-IN');
 
-      // Left: SHARNA
-      doc.fillColor('#C5A86B')
-         .fontSize(26)
+      // ── 1. BACKGROUND & GOLD DASHED BORDER ──
+      const boxMargin = 18;
+      const boxWidth = pageWidth - boxMargin * 2;
+      const boxHeight = pageHeight - boxMargin * 2;
+
+      // Outer parchment box
+      doc.rect(boxMargin, boxMargin, boxWidth, boxHeight)
+         .fillAndStroke('#FAF7F2', '#E5D8C8');
+
+      // Inner gold dashed border
+      doc.lineWidth(1)
+         .dash(4, { space: 4 })
+         .rect(boxMargin + 6, boxMargin + 6, boxWidth - 12, boxHeight - 12)
+         .stroke('#C5A86B')
+         .undash();
+
+      // ── 2. BRAND HEADER ──
+      const headerTop = 40;
+      const logoPath = path.join(__dirname, '../assets/logo.png');
+
+      if (fs.existsSync(logoPath)) {
+        try {
+          doc.image(logoPath, 42, headerTop - 5, { height: 48 });
+        } catch (e) {}
+      }
+
+      const textStartX = fs.existsSync(logoPath) ? 96 : 45;
+      doc.fillColor('#1E1915')
+         .fontSize(24)
          .font('Helvetica-Bold')
-         .text('S  H  A  R  N  A', 40, 32, { characterSpacing: 4 });
+         .text('SHARNA', textStartX, headerTop, { characterSpacing: 2 });
 
-      doc.fillColor('#EAE1D5')
+      doc.fillColor('#C5A86B')
+         .fontSize(7.5)
+         .font('Helvetica-Bold')
+         .text("WOMEN'S ETHNIC LUXURY • SAREES • KURTAS • SUITS", textStartX, headerTop + 27, { characterSpacing: 1 });
+
+      // Right Burgundy Badge
+      const badgeWidth = 145;
+      const badgeX = pageWidth - 45 - badgeWidth;
+      doc.rect(badgeX, headerTop - 2, badgeWidth, 20).fill('#6B3E3E');
+
+      doc.fillColor('#FAF7F2')
+         .fontSize(8.5)
+         .font('Helvetica-Bold')
+         .text('OFFICIAL TAX INVOICE', badgeX, headerTop + 4, { width: badgeWidth, align: 'center', characterSpacing: 1 });
+
+      doc.fillColor('#5C4E46')
          .fontSize(8.5)
          .font('Helvetica')
-         .text('HAUTE COUTURE & LUXURY ETHNIC WEAR', 40, 68, { characterSpacing: 1.5 });
-
-      // Right: TAX INVOICE
-      doc.fillColor('#C5A86B')
-         .fontSize(15)
+         .text(`Invoice #:`, badgeX - 60, headerTop + 25, { width: 100, align: 'right' })
          .font('Helvetica-Bold')
-         .text('TAX INVOICE', pageWidth - 240, 35, { width: 200, align: 'right' });
+         .text(invoiceNo, badgeX + 45, headerTop + 25, { width: 100, align: 'right' });
 
-      doc.fillColor('#EAE1D5')
-         .fontSize(9)
+      doc.fillColor('#5C4E46')
+         .fontSize(8.5)
          .font('Helvetica')
-         .text(`Invoice #: SH-${orderNumber}`, pageWidth - 240, 58, { width: 200, align: 'right' })
-         .text(`Date: ${invoiceDate}`, pageWidth - 240, 72, { width: 200, align: 'right' });
+         .text(`Date: `, badgeX - 60, headerTop + 37, { width: 100, align: 'right', continued: true })
+         .font('Helvetica-Bold')
+         .text(invoiceDate, { width: 100, align: 'right' });
 
-      // ── 2. SOLD BY & BILL TO DETAILS ──
-      const detailsY = 145;
+      // Header bottom divider line
+      const headerLineY = headerTop + 55;
+      doc.strokeColor('#6B3E3E').lineWidth(1.5)
+         .moveTo(42, headerLineY)
+         .lineTo(pageWidth - 42, headerLineY)
+         .stroke();
 
-      // Left: Sold By
-      doc.fillColor('#1E1915').fontSize(10).font('Helvetica-Bold').text('SOLD BY:', 40, detailsY);
-      doc.fillColor('#4A3E39').fontSize(9).font('Helvetica')
-         .text('SHARNA APPARELS PRIVATE LIMITED', 40, detailsY + 16)
-         .text('124 Luxury Fashion Boulevard, Civil Lines', 40, detailsY + 29)
-         .text('Jabalpur, Madhya Pradesh - 482001', 40, detailsY + 42)
-         .text('GSTIN: 23AABCS1429B1Z8 · support@sharna.in', 40, detailsY + 55);
+      // ── 3. SELLER & BUYER CARDS ──
+      const cardsY = headerLineY + 14;
+      const cardWidth = (pageWidth - 94) / 2;
+      const cardHeight = 130;
 
-      // Right: Bill To / Ship To
-      const rightColX = pageWidth / 2 + 20;
-      doc.fillColor('#1E1915').fontSize(10).font('Helvetica-Bold').text('BILL TO / SHIP TO:', rightColX, detailsY);
-      doc.fillColor('#4A3E39').fontSize(9).font('Helvetica')
-         .text(customerName, rightColX, detailsY + 16)
-         .text(fullAddress, rightColX, detailsY + 29, { width: 220 })
-         .text(`Phone: ${customerPhone}`, rightColX, detailsY + 58);
+      // Card 1: Seller Details
+      const card1X = 42;
+      doc.rect(card1X, cardsY, cardWidth, cardHeight).fillAndStroke('#FFFFFF', '#EAE1D5');
 
-      // ── 3. TABLE HEADER BAR ──
-      const tableY = detailsY + 95;
-      const tableWidth = pageWidth - 80;
+      doc.fillColor('#6B3E3E').fontSize(8.5).font('Helvetica-Bold')
+         .text('SELLER & SUPPLIER DETAILS', card1X + 12, cardsY + 10, { characterSpacing: 0.8 });
 
-      doc.rect(40, tableY, tableWidth, 24).fill('#F6F2EA');
+      doc.strokeColor('#EAE1D5').lineWidth(0.5)
+         .moveTo(card1X + 12, cardsY + 22)
+         .lineTo(card1X + cardWidth - 12, cardsY + 22)
+         .stroke();
 
       doc.fillColor('#1E1915').fontSize(9).font('Helvetica-Bold')
-         .text('ITEM DESCRIPTION', 50, tableY + 7, { width: 210 })
-         .text('SIZE / FIT', 270, tableY + 7, { width: 70, align: 'center' })
-         .text('QTY', 350, tableY + 7, { width: 40, align: 'center' })
-         .text('PRICE', 400, tableY + 7, { width: 65, align: 'right' })
-         .text('AMOUNT', 475, tableY + 7, { width: 75, align: 'right' });
+         .text('SHARNA Luxury Ethnic Apparel', card1X + 12, cardsY + 28);
 
-      // ── 4. ITEM ROWS ──
-      let rowY = tableY + 32;
+      doc.fillColor('#5C4E46').fontSize(8).font('Helvetica')
+         .text('Studio & Flagship Headquarters', card1X + 12, cardsY + 41)
+         .text('Jabalpur, Madhya Pradesh – 482001, India', card1X + 12, cardsY + 53)
+         .text('GSTIN: ', card1X + 12, cardsY + 66, { continued: true })
+         .font('Helvetica-Bold').fillColor('#1E1915').text('23AAGCS1234F1Z9')
+         .font('Helvetica').fillColor('#5C4E46')
+         .text('Support Phone: ', card1X + 12, cardsY + 79, { continued: true })
+         .font('Helvetica-Bold').fillColor('#1E1915').text('+91 62682 18135')
+         .font('Helvetica').fillColor('#5C4E46')
+         .text('Support Email: ', card1X + 12, cardsY + 92, { continued: true })
+         .font('Helvetica-Bold').fillColor('#1E1915').text('sharnaapparels@gmail.com')
+         .font('Helvetica').fillColor('#5C4E46')
+         .text('Website: ', card1X + 12, cardsY + 105, { continued: true })
+         .font('Helvetica-Bold').fillColor('#1E1915').text('https://sharna.in');
+
+      // Card 2: Billed & Shipped To
+      const card2X = card1X + cardWidth + 10;
+      doc.rect(card2X, cardsY, cardWidth, cardHeight).fillAndStroke('#FFFFFF', '#EAE1D5');
+
+      doc.fillColor('#6B3E3E').fontSize(8.5).font('Helvetica-Bold')
+         .text('BILLED & SHIPPED TO', card2X + 12, cardsY + 10, { characterSpacing: 0.8 });
+
+      doc.strokeColor('#EAE1D5').lineWidth(0.5)
+         .moveTo(card2X + 12, cardsY + 22)
+         .lineTo(card2X + cardWidth - 12, cardsY + 22)
+         .stroke();
+
+      doc.fillColor('#5C4E46').fontSize(8).font('Helvetica')
+         .text('Customer Name: ', card2X + 12, cardsY + 28, { continued: true })
+         .fillColor('#1E1915').font('Helvetica-Bold').text(customerName);
+
+      doc.fillColor('#5C4E46').font('Helvetica')
+         .text('Address: ', card2X + 12, cardsY + 41, { continued: true })
+         .fillColor('#1E1915').font('Helvetica-Bold').text(street);
+
+      doc.fillColor('#5C4E46').font('Helvetica')
+         .text(`${city}, ${state} – ${pincode}, ${country}`, card2X + 12, cardsY + 53, { width: cardWidth - 24 });
+
+      doc.fillColor('#5C4E46').font('Helvetica')
+         .text('Phone: ', card2X + 12, cardsY + 79, { continued: true })
+         .fillColor('#1E1915').font('Helvetica-Bold').text(customerPhone);
+
+      doc.fillColor('#5C4E46').font('Helvetica')
+         .text('Email: ', card2X + 12, cardsY + 92, { continued: true })
+         .fillColor('#1E1915').font('Helvetica-Bold').text(customerEmail);
+
+      // ── 4. ITEMS TABLE ──
+      const tableY = cardsY + cardHeight + 14;
+      const tableWidth = pageWidth - 84;
+
+      // Burgundy Table Header Bar
+      doc.rect(42, tableY, tableWidth, 22).fill('#6B3E3E');
+
+      doc.fillColor('#FAF7F2').fontSize(8).font('Helvetica-Bold')
+         .text('#', 46, tableY + 7, { width: 22, align: 'center' })
+         .text('ITEM DESCRIPTION', 72, tableY + 7, { width: 195 })
+         .text('SIZE / COLOR', 270, tableY + 7, { width: 95, align: 'center' })
+         .text('QTY', 370, tableY + 7, { width: 35, align: 'center' })
+         .text('UNIT PRICE', 410, tableY + 7, { width: 65, align: 'right' })
+         .text('TOTAL (INR)', 480, tableY + 7, { width: 70, align: 'right' });
+
+      // Table Item Rows
+      let rowY = tableY + 22;
       const items = order.items && order.items.length > 0 ? order.items : [
-        { title: 'Blush Toga Co-ord Set (2 Pcs)', size: 'M', quantity: 1, price: totalAmount }
+        { title: 'Blush Toga Co-ord Set (2 Pcs)', size: 'M', color: 'green', quantity: 1, price: totalAmount }
       ];
 
-      items.forEach((item) => {
+      items.forEach((item, index) => {
         const itemTitle = item.product?.title || item.title || 'Blush Toga Co-ord Set (2 Pcs)';
         const itemSize = item.size || 'M';
+        const itemColor = item.color || 'green';
         const itemQty = Number(item.quantity || 1);
         const itemPrice = Number(item.price || totalAmount);
         const itemTotal = itemPrice * itemQty;
 
-        doc.fillColor('#222222').fontSize(9.5).font('Helvetica')
-           .text(itemTitle, 50, rowY, { width: 210 })
-           .text(itemSize, 270, rowY, { width: 70, align: 'center' })
-           .text(String(itemQty), 350, rowY, { width: 40, align: 'center' })
-           .text(formatPrice(itemPrice), 400, rowY, { width: 65, align: 'right' })
-           .text(formatPrice(itemTotal), 475, rowY, { width: 75, align: 'right' });
+        // White row background
+        doc.rect(42, rowY, tableWidth, 34).fillAndStroke('#FFFFFF', '#F0E6D8');
 
-        doc.strokeColor('#EAE1D5').lineWidth(0.5)
-           .moveTo(40, rowY + 20)
-           .lineTo(pageWidth - 40, rowY + 20)
-           .stroke();
+        // Item Index
+        doc.fillColor('#7A6960').fontSize(8.5).font('Helvetica')
+           .text(String(index + 1), 46, rowY + 11, { width: 22, align: 'center' });
 
-        rowY += 32;
+        // Title + HSN
+        doc.fillColor('#1E1915').fontSize(9).font('Helvetica-Bold')
+           .text(itemTitle, 72, rowY + 7, { width: 195 });
+
+        doc.fillColor('#8A796E').fontSize(7.5).font('Helvetica')
+           .text('HSN Code: 6204 • Handcrafted Ethnic Garment', 72, rowY + 19, { width: 195 });
+
+        // Pill Badges for Size & Color
+        const badge1X = 270;
+        doc.rect(badge1X, rowY + 9, 44, 15).fillAndStroke('#FAF4EB', '#EAE1D5');
+        doc.fillColor('#5C4E46').fontSize(7.5).font('Helvetica')
+           .text(`Size: ${itemSize}`, badge1X, rowY + 13, { width: 44, align: 'center' });
+
+        const badge2X = badge1X + 48;
+        doc.rect(badge2X, rowY + 9, 54, 15).fillAndStroke('#FAF4EB', '#EAE1D5');
+        doc.fillColor('#5C4E46').fontSize(7.5).font('Helvetica')
+           .text(`Color: ${itemColor}`, badge2X, rowY + 13, { width: 54, align: 'center' });
+
+        // Qty, Price, Amount
+        doc.fillColor('#1E1915').fontSize(9).font('Helvetica-Bold')
+           .text(String(itemQty), 370, rowY + 11, { width: 35, align: 'center' });
+
+        doc.fillColor('#5C4E46').fontSize(8.5).font('Helvetica')
+           .text(formatINR(itemPrice), 410, rowY + 11, { width: 65, align: 'right' });
+
+        doc.fillColor('#1E1915').fontSize(9.5).font('Helvetica-Bold')
+           .text(formatINR(itemTotal), 480, rowY + 11, { width: 70, align: 'right' });
+
+        rowY += 34;
       });
 
-      // ── 5. TOTALS SECTION ──
-      const totalsY = Math.max(rowY + 120, 480);
-      const totalBoxX = pageWidth - 260;
+      // ── 5. SUMMARY CARDS ──
+      const summaryY = Math.max(rowY + 14, 400);
+      const sumCardWidth = (pageWidth - 94) / 2;
+      const sumCardHeight = 85;
 
-      doc.fillColor('#5C4E46').fontSize(9.5).font('Helvetica')
-         .text('Subtotal:', totalBoxX, totalsY)
-         .text(formatPrice(subtotal), totalBoxX + 90, totalsY, { width: 120, align: 'right' });
+      // Left Box: Payment Status
+      const leftSumX = 42;
+      doc.rect(leftSumX, summaryY, sumCardWidth, sumCardHeight).fillAndStroke('#FFFFFF', '#EAE1D5');
 
-      doc.text('Shipping (Express Luxe):', totalBoxX, totalsY + 22)
-         .text(shippingAmount === 0 ? 'FREE' : formatPrice(shippingAmount), totalBoxX + 90, totalsY + 22, { width: 120, align: 'right' });
+      doc.fillColor('#27AE60').fontSize(8.5).font('Helvetica-Bold')
+         .text('✔ PAYMENT CONFIRMED (PAID ONLINE)', leftSumX + 12, summaryY + 10);
 
-      // Black TOTAL PAID Band with Gold Text
-      doc.rect(totalBoxX - 10, totalsY + 45, 230, 32).fill('#1A1614');
+      doc.fillColor('#5C4E46').fontSize(8).font('Helvetica')
+         .text('Transaction Processed via ', leftSumX + 12, summaryY + 24, { continued: true })
+         .font('Helvetica-Bold').fillColor('#1E1915').text('Razorpay Secured Gateway.')
+         .font('Helvetica').fillColor('#5C4E46')
+         .text('All taxes (CGST 6% + SGST 6%) are included in total amount as per Indian GST Regulations.', leftSumX + 12, summaryY + 38, { width: sumCardWidth - 24 });
 
-      doc.fillColor('#C5A86B').fontSize(11).font('Helvetica-Bold')
-         .text('TOTAL PAID:', totalBoxX, totalsY + 55);
+      // Right Box: Totals Breakdown
+      const rightSumX = leftSumX + sumCardWidth + 10;
+      doc.rect(rightSumX, summaryY, sumCardWidth, sumCardHeight).fillAndStroke('#FFFFFF', '#EAE1D5');
 
-      doc.fillColor('#C5A86B').fontSize(11).font('Helvetica-Bold')
-         .text(formatPrice(totalAmount), totalBoxX + 90, totalsY + 55, { width: 120, align: 'right' });
+      doc.fillColor('#5C4E46').fontSize(8).font('Helvetica')
+         .text('Item Subtotal (Excl. Tax):', rightSumX + 12, summaryY + 9)
+         .text(formatINR(taxableValue), rightSumX + sumCardWidth - 85, summaryY + 9, { width: 73, align: 'right' });
 
-      // ── 6. FOOTER ──
-      const footerY = pageHeight - 75;
-      doc.strokeColor('#C5A86B').lineWidth(1)
-         .moveTo(40, footerY)
-         .lineTo(pageWidth - 40, footerY)
+      doc.text('Estimated GST (12%):', rightSumX + 12, summaryY + 21)
+         .text(formatINR(totalGst), rightSumX + sumCardWidth - 85, summaryY + 21, { width: 73, align: 'right' });
+
+      doc.text('Shipping & Logistics:', rightSumX + 12, summaryY + 33);
+      doc.fillColor('#27AE60').font('Helvetica-Bold')
+         .text(shippingAmount === 0 ? 'Complimentary' : formatINR(shippingAmount), rightSumX + sumCardWidth - 95, summaryY + 33, { width: 83, align: 'right' });
+
+      // Total Bar
+      doc.strokeColor('#EAE1D5').lineWidth(0.5)
+         .moveTo(rightSumX + 10, summaryY + 48)
+         .lineTo(rightSumX + sumCardWidth - 10, summaryY + 48)
          .stroke();
 
-      doc.fillColor('#1E1915').fontSize(9).font('Helvetica-Bold')
-         .text('Thank you for choosing SHARNA Haute Couture.', 40, footerY + 12);
+      doc.fillColor('#1E1915').fontSize(11).font('Helvetica-Bold')
+         .text('TOTAL PAID:', rightSumX + 12, summaryY + 58);
 
-      doc.fillColor('#7A6960').fontSize(8).font('Helvetica')
-         .text('This is a computer-generated tax invoice. For queries regarding alterations or returns, contact support@sharna.in or WhatsApp +91 62682 18135.', 40, footerY + 26)
-         .text('Website: www.sharna.in · Handcrafted with pride in India', 40, footerY + 38);
+      doc.fillColor('#1E1915').fontSize(12.5).font('Helvetica-Bold')
+         .text(formatINR(totalAmount), rightSumX + sumCardWidth - 120, summaryY + 56, { width: 108, align: 'right' });
+
+      // ── 6. FOOTER ──
+      const footerY = pageHeight - 55;
+      doc.fillColor('#7A6960').fontSize(7.5).font('Helvetica')
+         .text('Thank you for choosing SHARNA. For returns, exchanges or support inquiries, please contact sharnaapparels@gmail.com.', 42, footerY, { width: pageWidth - 84, align: 'center' })
+         .text('This is a computer-generated official tax receipt. No signature is required.', 42, footerY + 11, { width: pageWidth - 84, align: 'center' });
 
       doc.end();
     } catch (err) {
