@@ -104,26 +104,32 @@ exports.downloadInvoicePDF = async (req, res) => {
       });
     }
 
-    // If order not found or test requested, construct a clean order structure
+    // If order not found or test requested, construct clean order structure matching template
     if (!order) {
       order = {
-        id: id || 'SHARNA',
-        orderNumber: id || 'SHARNA',
+        id: id || 'cmt0oadp90001pq01op2l5ili',
+        orderNumber: id || 'cmt0oadp90001pq01op2l5ili',
         createdAt: new Date(),
-        totalAmount: 2300,
+        totalAmount: 18500,
         shippingAmount: 0,
-        user: { name: 'Mrs. Swati Kureel', email: 'support@sharna.in', phone: '+91 62682 18135' },
-        shippingStreet: '124 Luxury Fashion Boulevard, Civil Lines',
-        shippingCity: 'Jabalpur',
+        notes: JSON.stringify({
+          shippingName: 'Mr.priyanshu lokhande',
+          shippingEmail: 'priyanshulokhande72@gmail.com',
+          shippingPhone: '7999715256'
+        }),
+        user: { name: 'Mr.priyanshu lokhande', email: 'priyanshulokhande72@gmail.com', phone: '7999715256' },
+        shippingStreet: 'At, post',
+        shippingCity: 'Khedi Sawligarh',
         shippingState: 'Madhya Pradesh',
-        shippingPostalCode: '482001',
+        shippingPostalCode: '460225',
+        shippingCountry: 'India',
         items: [
           {
-            title: 'Anarkali Suit Set (Celebrity Edition)',
+            title: 'Blush Toga Co-ord Set (2 Pcs)',
             quantity: 1,
-            price: 2300,
+            price: 18500,
             size: 'M',
-            color: 'Festive Gold'
+            color: 'green'
           }
         ]
       };
