@@ -6,7 +6,8 @@
       "subtitle": "HANDWOVEN & HANDSPUN COTTON ATTIRE · CRAFTED FOR THE DISCERNING MUSE",
       "linkPath": "/collections",
       "buttonText": "DISCOVER COLLECTION",
-      "imageUrl": "/src/assets/hero-slide-1.png"
+      "imageUrl": "/src/assets/hero-slide-1.png",
+      "mobileImageUrl": "/src/assets/hero-mobile-1.png"
     },
     {
       "id": "slide-2",
@@ -14,7 +15,8 @@
       "subtitle": "SEASONAL CO-ORD SETS, TUNIC DRESSES & LUXURY SUITS",
       "linkPath": "/ready-to-ship",
       "buttonText": "SHOP READY TO SHIP",
-      "imageUrl": "/src/assets/hero-slide-2.png"
+      "imageUrl": "/src/assets/hero-slide-2.png",
+      "mobileImageUrl": "/src/assets/hero-mobile-2.png"
     },
     {
       "id": "slide-3",
@@ -22,44 +24,28 @@
       "subtitle": "EXPLORE STATEMENT PIECES DESIGNED FOR EVERY OCCASION",
       "linkPath": "/collections",
       "buttonText": "EXPLORE CELEBRITY LOOKS",
-      "imageUrl": "/src/assets/hero-slide-3.png"
+      "imageUrl": "/src/assets/hero-slide-3.png",
+      "mobileImageUrl": "/src/assets/hero-mobile-3.png"
     }
   ],
   "newArrivalsProductIds": [
-    "na1",
-    "na2",
-    "na3",
-    "na4",
-    "cms9io06q001ovs8w2vhv4b7f",
-    "cms9g6bxn000cvs6wp82pp0a1",
-    "cms9f9bxr0000vs3wooozulyt",
-    "cms9f8y5h0000vsb019oipgxg"
+    "cmt0hjmw20000vsm8huvbrryv"
   ],
   "celebrityClosetProductIds": [
-    "cms9f9bxr0000vs3wooozulyt",
-    "cms9f8y5h0000vsb019oipgxg",
-    "cms81jecy0002vsuketbxelo1",
-    "cms81jedf0003vsukr4j84wlz"
+    "cmt0h3qgk0022vsacp4gnor1s",
+    "cmt0h3q6g001yvsac1mo5r3qo",
+    "cmt0h3pw5001uvsacl0cjl4n7"
   ],
   "bestSellersProductIds": [
-    "bs1",
-    "bs2",
-    "bs3",
-    "bs4",
-    "cms81jf580005vsuk5alytptl",
-    "cms9f8y5h0000vsb019oipgxg",
-    "cms9f9bxr0000vs3wooozulyt",
-    "cms81jc920000vsukz6pvzri5"
+    "cmt0h3qgk0022vsacp4gnor1s",
+    "cmt0h3q6g001yvsac1mo5r3qo",
+    "cmt0h3pw5001uvsacl0cjl4n7"
   ],
   "readyToShipProductIds": [
-    "s1",
-    "s2",
-    "s3",
-    "s4",
-    "cms81jecy0002vsuketbxelo1",
-    "cms6jtgos0006vsgk0m7opwt4",
-    "cms81jcxc0001vsukidzq0pcu",
-    "cms81jf580005vsuk5alytptl"
+    "cmt0hjmw20000vsm8huvbrryv",
+    "cmt0h3qgk0022vsacp4gnor1s",
+    "cmt0h3q6g001yvsac1mo5r3qo",
+    "cmt0h3pls001qvsac2dvqe4h6"
   ],
   "testimonials": [
     {
@@ -87,5 +73,49 @@
       "isVerified": true
     }
   ],
-  "updatedAt": "2026-08-01T15:19:00.800Z"
+  "updatedAt": "2026-08-19T19:38:32.904Z",
+  "ethnicCategories": [
+    {
+      "id": "cat-1",
+      "name": "SUIT SETS",
+      "tag": "Anarkalis & Salwars",
+      "image": "/src/assets/reception-2.png",
+      "link": "/shop?category=suit-sets"
+    },
+    {
+      "id": "cat-2",
+      "name": "CO-ORD SETS",
+      "tag": "Indo-Western Edits",
+      "image": "/src/assets/ready-to-ship-2.png",
+      "link": "/shop?category=coord-sets"
+    },
+    {
+      "id": "cat-3",
+      "name": "DRESSES & GOWNS",
+      "tag": "Festive Luxe",
+      "image": "/src/assets/festive-1.png",
+      "link": "/shop?category=dresses"
+    },
+    {
+      "id": "cat-4",
+      "name": "SHORT KURTIS",
+      "tag": "Everyday Ethnic",
+      "image": "/src/assets/reception-1.png",
+      "link": "/shop?category=short-kurtis"
+    },
+    {
+      "id": "cat-5",
+      "name": "ETHNIC SHIRTS",
+      "tag": "Handcrafted Blouses",
+      "image": "/src/assets/celebrity-1.png",
+      "link": "/shop?category=shirts"
+    },
+    {
+      "id": "cat-6",
+      "name": "FESTIVE COLLECTION",
+      "tag": "Heritage Weaves",
+      "image": "/src/assets/festive-2.png",
+      "link": "/shop?collection=festive-collection"
+    }
+  ]
 }

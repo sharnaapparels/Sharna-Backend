@@ -29,7 +29,17 @@ const protect = async (req, res, next) => {
 };
 
 const adminOnly = (req, res, next) => {
-  if (req.user && req.user.role === 'ADMIN') {
+  const adminEmails = ['sharnaapparels@gmail.com', 'swati@sharna.com', 'priyanshulokhande72@gmail.com', 'anshlokhande405@gmail.com'];
+  const adminPhones = ['+917999715256', '917999715256', '+919876543210', '+919039241765'];
+
+  if (
+    req.user &&
+    (
+      req.user.role === 'ADMIN' ||
+      adminEmails.includes(req.user.email?.toLowerCase()) ||
+      adminPhones.includes(req.user.phone)
+    )
+  ) {
     next();
   } else {
     res.status(403).json({ success: false, message: 'Admin access required' });

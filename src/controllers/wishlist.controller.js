@@ -2,58 +2,124 @@ const prisma = require('../config/database');
 
 // GET /api/wishlist
 exports.getWishlist = async (req, res) => {
-  const wishlist = await prisma.wishlist.findMany({
-    where: { userId: req.user.id },
-    include: { product: { include: { images: true } } }
-  });
-  res.json({ success: true, wishlist });
+  try {
+    const wishlistRecords = await prisma.wishlist.findMany({
+      where: { userId: req.user.id },
+      include: { product: { include: { images: true } } }
+    });
+    const wishlist = wishlistRecords
+      .filter(w => w.product)
+      .map(w => ({
+        ...w.product,
+        id: w.product.id,
+        title: w.product.title,
+        price: w.product.price,
+        image: w.product.images?.[0]?.url || w.product.image || '',
+        images: w.product.images
+      }));
+    res.json({ success: true, wishlist });
+  } catch (err) {
+    console.error('Error fetching wishlist:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch wishlist' });
+  }
 };
 
 // POST /api/wishlist
 exports.addToWishlist = async (req, res) => {
-  const { productId } = req.body;
-  const item = await prisma.wishlist.upsert({
-    where: { userId_productId: { userId: req.user.id, productId } },
-    update: {},
-    create: { userId: req.user.id, productId }
-  });
-  res.status(201).json({ success: true, item });
+  try {
+    const { productId } = req.body;
+    if (!productId) {
+      return res.status(400).json({ success: false, message: 'Product ID is required' });
+    }
+
+    // Verify product exists in database first
+    const productExists = await prisma.product.findUnique({
+      where: { id: String(productId) },
+      select: { id: true }
+    });
+
+    if (!productExists) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
+
+    const item = await prisma.wishlist.upsert({
+      where: { userId_productId: { userId: req.user.id, productId: String(productId) } },
+      update: {},
+      create: { userId: req.user.id, productId: String(productId) }
+    });
+    res.status(201).json({ success: true, item });
+  } catch (err) {
+    console.error('Error adding to wishlist:', err);
+    res.status(500).json({ success: false, message: 'Failed to add to wishlist' });
+  }
 };
 
 // DELETE /api/wishlist/:productId
 exports.removeFromWishlist = async (req, res) => {
-  await prisma.wishlist.deleteMany({
-    where: { userId: req.user.id, productId: req.params.productId }
-  });
-  res.json({ success: true, message: 'Removed from wishlist' });
+  try {
+    const { productId } = req.params;
+    await prisma.wishlist.deleteMany({
+      where: { userId: req.user.id, productId: String(productId) }
+    });
+    res.json({ success: true, message: 'Removed from wishlist' });
+  } catch (err) {
+    console.error('Error removing from wishlist:', err);
+    res.status(500).json({ success: false, message: 'Failed to remove from wishlist' });
+  }
 };
 
 // POST /api/wishlist/sync
 exports.syncWishlist = async (req, res) => {
-  const { productIds = [] } = req.body;
-  if (!req.user || !Array.isArray(productIds)) {
-    return res.status(400).json({ success: false, message: 'Invalid payload' });
-  }
-
-  // Upsert all product IDs into user wishlist
-  for (const productId of productIds) {
-    try {
-      await prisma.wishlist.upsert({
-        where: { userId_productId: { userId: req.user.id, productId } },
-        update: {},
-        create: { userId: req.user.id, productId }
-      });
-    } catch (err) {
-      // Ignore duplicates/foreign key invalid IDs
+  try {
+    const { productIds = [] } = req.body;
+    if (!req.user || !Array.isArray(productIds)) {
+      return res.status(400).json({ success: false, message: 'Invalid payload' });
     }
+
+    const cleanIds = productIds
+      .map(item => (typeof item === 'object' ? (item.id || item._id) : item))
+      .filter(Boolean)
+      .map(String);
+
+    if (cleanIds.length > 0) {
+      const existingProducts = await prisma.product.findMany({
+        where: { id: { in: cleanIds } },
+        select: { id: true }
+      });
+      const validDbIds = new Set(existingProducts.map(p => p.id));
+
+      for (const validId of validDbIds) {
+        try {
+          await prisma.wishlist.upsert({
+            where: { userId_productId: { userId: req.user.id, productId: validId } },
+            update: {},
+            create: { userId: req.user.id, productId: validId }
+          });
+        } catch (_) {}
+      }
+    }
+
+    const updatedWishlistRecords = await prisma.wishlist.findMany({
+      where: { userId: req.user.id },
+      include: { product: { include: { images: true } } }
+    });
+
+    const wishlist = updatedWishlistRecords
+      .filter(w => w.product)
+      .map(w => ({
+        ...w.product,
+        id: w.product.id,
+        title: w.product.title,
+        price: w.product.price,
+        image: w.product.images?.[0]?.url || w.product.image || '',
+        images: w.product.images
+      }));
+
+    res.json({ success: true, wishlist });
+  } catch (err) {
+    console.error('Error syncing wishlist:', err);
+    res.status(500).json({ success: false, message: 'Failed to sync wishlist' });
   }
-
-  const updatedWishlist = await prisma.wishlist.findMany({
-    where: { userId: req.user.id },
-    include: { product: { include: { images: true } } }
-  });
-
-  res.json({ success: true, wishlist: updatedWishlist });
 };
 
 // POST /api/wishlist/send-reminder

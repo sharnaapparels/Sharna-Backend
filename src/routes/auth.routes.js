@@ -70,6 +70,10 @@ router.post('/resend-otp', otpSendLimiter, [
   body('phone').notEmpty().withMessage('Phone number is required')
 ], authController.resendOtp);
 
+// ─── Refresh Token & Logout (HTTP-Only Secure Cookie Architecture) ───────────
+router.post('/refresh', authController.refresh);
+router.post('/logout', authController.logout);
+
 // ─── Protected Routes ─────────────────────────────────────────────────────────
 router.get('/me', protect, authController.getProfile);
 router.put('/profile', protect, authController.updateProfile);

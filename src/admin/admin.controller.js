@@ -423,3 +423,59 @@ exports.getAllUsers = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to retrieve users list' });
   }
 };
+
+// DELETE /api/admin/users/:id
+exports.deleteUser = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // 1. Delete user related wishlist, cart items, reviews, contacts, addresses
+    await prisma.wishlist.deleteMany({ where: { userId: id } }).catch(() => {});
+    await prisma.cartItem.deleteMany({ where: { userId: id } }).catch(() => {});
+    await prisma.review.deleteMany({ where: { userId: id } }).catch(() => {});
+    await prisma.contact.deleteMany({ where: { userId: id } }).catch(() => {});
+    await prisma.address.deleteMany({ where: { userId: id } }).catch(() => {});
+
+    // 2. Cascade delete user orders and items
+    const userOrders = await prisma.order.findMany({ where: { userId: id }, select: { id: true } });
+    if (userOrders && userOrders.length > 0) {
+      const orderIds = userOrders.map(o => o.id);
+      await prisma.orderItem.deleteMany({ where: { orderId: { in: orderIds } } }).catch(() => {});
+      await prisma.order.deleteMany({ where: { id: { in: orderIds } } }).catch(() => {});
+    }
+
+    // 3. Delete the user
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (user) {
+      await prisma.user.delete({ where: { id } });
+    }
+
+    console.log(`✅ [USER DELETED]: Account ID ${id}`);
+    return res.json({ success: true, message: 'User account and all associated records deleted successfully' });
+  } catch (err) {
+    console.error("⚠️ Delete user error:", err.message);
+    return res.status(500).json({ success: false, message: err.message || 'Failed to delete user' });
+  }
+};
+
+// DELETE /api/admin/orders/:id
+exports.deleteOrder = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Delete order related items and shipments first
+    await prisma.orderItem.deleteMany({ where: { orderId: id } }).catch(() => {});
+    await prisma.shipment.deleteMany({ where: { orderId: id } }).catch(() => {});
+
+    const order = await prisma.order.findUnique({ where: { id } });
+    if (order) {
+      await prisma.order.delete({ where: { id } });
+    }
+
+    console.log(`✅ [ORDER DELETED]: Order ID ${id}`);
+    return res.json({ success: true, message: 'Order deleted successfully' });
+  } catch (err) {
+    console.error("⚠️ Delete order error:", err.message);
+    return res.status(500).json({ success: false, message: err.message || 'Failed to delete order' });
+  }
+};

@@ -77,10 +77,29 @@ exports.createOrder = async (req, res) => {
       const verifiedShipping = calculatedSubtotal > 10000 ? 0 : 500;
       const verifiedTotal = calculatedSubtotal > 0 ? (calculatedSubtotal + verifiedShipping) : amount;
 
+      // Resolve user ID (authenticated user or fallback guest user)
+      let activeUserId = req.user?.id;
+      if (!activeUserId) {
+        const guestPhone = shippingAddress?.phone || '9999999999';
+        const guestEmail = shippingAddress?.email || 'guest@sharna.in';
+        const guestUser = await prisma.user.upsert({
+          where: { phone: guestPhone },
+          update: { name: shippingAddress?.name || 'Guest Customer' },
+          create: {
+            phone: guestPhone,
+            email: guestEmail,
+            name: shippingAddress?.name || 'Guest Customer',
+            password: '',
+            isVerified: true
+          }
+        });
+        activeUserId = guestUser.id;
+      }
+
       // Create order in DB
       const order = await prisma.order.create({
         data: {
-          userId: req.user.id,
+          userId: activeUserId,
           totalAmount: verifiedTotal,
           shippingAmount: verifiedShipping,
           razorpayOrderId: razorpayOrder.id,

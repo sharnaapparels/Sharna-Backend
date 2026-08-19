@@ -12,7 +12,8 @@ const DEFAULT_HOMEPAGE_CONFIG = {
       subtitle: 'HANDWOVEN & HANDSPUN COTTON ATTIRE · CRAFTED FOR THE DISCERNING MUSE',
       linkPath: '/collections',
       buttonText: 'DISCOVER COLLECTION',
-      imageUrl: '/src/assets/hero-slide-1.png'
+      imageUrl: '/src/assets/hero-slide-1.png',
+      mobileImageUrl: '/src/assets/hero-mobile-1.png'
     },
     {
       id: 'slide-2',
@@ -20,7 +21,8 @@ const DEFAULT_HOMEPAGE_CONFIG = {
       subtitle: 'SEASONAL CO-ORD SETS, TUNIC DRESSES & LUXURY SUITS',
       linkPath: '/ready-to-ship',
       buttonText: 'SHOP READY TO SHIP',
-      imageUrl: '/src/assets/hero-slide-2.png'
+      imageUrl: '/src/assets/hero-slide-2.png',
+      mobileImageUrl: '/src/assets/hero-mobile-2.png'
     },
     {
       id: 'slide-3',
@@ -28,7 +30,8 @@ const DEFAULT_HOMEPAGE_CONFIG = {
       subtitle: 'EXPLORE STATEMENT PIECES DESIGNED FOR EVERY OCCASION',
       linkPath: '/collections',
       buttonText: 'EXPLORE CELEBRITY LOOKS',
-      imageUrl: '/src/assets/hero-slide-3.png'
+      imageUrl: '/src/assets/hero-slide-3.png',
+      mobileImageUrl: '/src/assets/hero-mobile-3.png'
     }
   ],
   newArrivalsProductIds: [],
@@ -60,6 +63,14 @@ const DEFAULT_HOMEPAGE_CONFIG = {
       rating: 5,
       isVerified: true
     }
+  ],
+  ethnicCategories: [
+    { id: 'cat-1', name: 'SUIT SETS', tag: 'Anarkalis & Salwars', image: '/src/assets/reception-2.png', link: '/shop?category=suit-sets' },
+    { id: 'cat-2', name: 'CO-ORD SETS', tag: 'Indo-Western Edits', image: '/src/assets/ready-to-ship-2.png', link: '/shop?category=coord-sets' },
+    { id: 'cat-3', name: 'DRESSES & GOWNS', tag: 'Festive Luxe', image: '/src/assets/festive-1.png', link: '/shop?category=dresses' },
+    { id: 'cat-4', name: 'SHORT KURTIS', tag: 'Everyday Ethnic', image: '/src/assets/reception-1.png', link: '/shop?category=short-kurtis' },
+    { id: 'cat-5', name: 'ETHNIC SHIRTS', tag: 'Handcrafted Blouses', image: '/src/assets/celebrity-1.png', link: '/shop?category=shirts' },
+    { id: 'cat-6', name: 'FESTIVE COLLECTION', tag: 'Heritage Weaves', image: '/src/assets/festive-2.png', link: '/shop?collection=festive-collection' }
   ]
 };
 
@@ -109,6 +120,11 @@ const getCMSConfig = async () => {
     if (!config.readyToShipProductIds || config.readyToShipProductIds.length === 0) {
       const ids = dbProducts.filter(p => p.collection === 'ready-to-ship' || p.category === 'ready-to-ship').map(p => p.id);
       config.readyToShipProductIds = ids.length > 0 ? ids.slice(0, 6) : ['s1', 's2', 's3', 's4'];
+      needsSave = true;
+    }
+
+    if (!config.ethnicCategories || config.ethnicCategories.length === 0) {
+      config.ethnicCategories = DEFAULT_HOMEPAGE_CONFIG.ethnicCategories;
       needsSave = true;
     }
 
@@ -198,7 +214,7 @@ exports.getHomepageCMS = async (req, res) => {
 // PUT /api/cms/homepage
 exports.updateHomepageCMS = async (req, res) => {
   try {
-    const { heroSlides, newArrivalsProductIds, celebrityClosetProductIds, bestSellersProductIds, readyToShipProductIds, testimonials } = req.body;
+    const { heroSlides, newArrivalsProductIds, celebrityClosetProductIds, bestSellersProductIds, readyToShipProductIds, testimonials, ethnicCategories } = req.body;
 
     const currentConfig = await getCMSConfig();
 
@@ -210,6 +226,7 @@ exports.updateHomepageCMS = async (req, res) => {
       bestSellersProductIds: bestSellersProductIds !== undefined ? bestSellersProductIds : currentConfig.bestSellersProductIds,
       readyToShipProductIds: readyToShipProductIds !== undefined ? readyToShipProductIds : currentConfig.readyToShipProductIds,
       testimonials: testimonials || currentConfig.testimonials,
+      ethnicCategories: ethnicCategories || currentConfig.ethnicCategories,
       updatedAt: new Date().toISOString()
     };
 

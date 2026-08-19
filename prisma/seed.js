@@ -244,7 +244,7 @@ const SEED_PRODUCTS = [
 
   // ─── READY TO SHIP ──────────────────────────────────────────────────────
   {
-    title: 'Mati PL Shorts - Green (Ready to Ship)',
+    title: 'Mati PL Shorts - Green',
     slug: 'mati-pl-shorts-green',
     description: 'Ready to ship green shorts with relaxed drawstring waist.',
     price: 4950.00,
@@ -259,7 +259,7 @@ const SEED_PRODUCTS = [
     ]
   },
   {
-    title: 'Mati Rang Be Pants - Red (Ready to Ship)',
+    title: 'Mati Rang Be Pants - Red',
     slug: 'mati-rang-be-pants-red',
     description: 'Crimson red handcrafted pants ready to ship.',
     price: 5400.00,
@@ -274,7 +274,7 @@ const SEED_PRODUCTS = [
     ]
   },
   {
-    title: 'Mati Rang Be Pants - Yellow (Ready to Ship)',
+    title: 'Mati Rang Be Pants - Yellow',
     slug: 'mati-rang-be-pants-yellow',
     description: 'Vibrant mustard yellow pants ready for immediate dispatch.',
     price: 5400.00,

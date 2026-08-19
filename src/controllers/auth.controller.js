@@ -5,8 +5,24 @@ const { sendWhatsAppOTPText } = require('../utils/whatsapp.service');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const generateToken = (userId) =>
-  jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '30d' });
+const generateToken = (userId, role = 'USER') =>
+  jwt.sign({ id: userId, role }, process.env.JWT_SECRET || 'sharna_super_secure_jwt_secret_key_12345', { expiresIn: '30d' });
+
+const generateAccessToken = (userId, role = 'USER') =>
+  jwt.sign({ id: userId, role }, process.env.JWT_SECRET || 'sharna_super_secure_jwt_secret_key_12345', { expiresIn: '15m' });
+
+const generateRefreshToken = (userId, role = 'USER') =>
+  jwt.sign({ id: userId, role, type: 'refresh' }, process.env.JWT_SECRET || 'sharna_super_secure_jwt_secret_key_12345', { expiresIn: '7d' });
+
+const setRefreshTokenCookie = (res, refreshToken) => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'strict' : 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
+  });
+};
 
 const generateOTP = () =>
   Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit
@@ -45,7 +61,10 @@ exports.register = async (req, res) => {
   });
 
   if (existingVerified) {
-    return res.status(400).json({ success: false, message: 'An account with this phone/email already exists. Please login.' });
+    return res.status(400).json({ 
+      success: false, 
+      message: 'An account with this phone/email already exists. Please Sign In instead.' 
+    });
   }
 
   // Delete any unverified account that has the conflicting email (since email is unique)
@@ -166,10 +185,15 @@ exports.verifyOtp = async (req, res) => {
     data: { isVerified: true, otp: null, otpExpires: null, otpPurpose: null }
   });
 
+  const accessToken = generateAccessToken(verifiedUser.id, verifiedUser.role);
+  const refreshToken = generateRefreshToken(verifiedUser.id, verifiedUser.role);
+  setRefreshTokenCookie(res, refreshToken);
+
   res.json({
     success: true,
     message: 'Account verified successfully!',
-    token: generateToken(verifiedUser.id),
+    token: accessToken,
+    accessToken,
     user: formatUserResponse(verifiedUser)
   });
 };
@@ -311,92 +335,84 @@ exports.login = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Email/phone and password are required' });
   }
 
-  const lowerIdentifier = rawIdentifier.toLowerCase();
-  const digitsOnly = rawIdentifier.replace(/\D/g, '');
-  const tenDigitPhone = digitsOnly.length >= 10 ? digitsOnly.slice(-10) : digitsOnly;
-
-  const isDefaultPassword = password === '123456' || password === 'admin123';
-  const isDefaultUserCredential = (tenDigitPhone === '9324503975' || tenDigitPhone === '7999715256' || tenDigitPhone === '9202709524' || tenDigitPhone === '9039241765') && isDefaultPassword;
-  const isAdminCredential = lowerIdentifier.includes('admin') || lowerIdentifier.includes('sharna') || lowerIdentifier === 'chetna@sharna.com' || tenDigitPhone === '9324503975';
-
   // Find user by email OR phone using flexible format matcher
-  let user = await findUserByIdentifier(rawIdentifier);
-
-  // Auto-provision user if password is '123456' / 'admin123' and user does not exist in DB
-  if (!user && (isDefaultPassword || isDefaultUserCredential || isAdminCredential)) {
-    try {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const newPhone = tenDigitPhone ? `+91${tenDigitPhone}` : null;
-      const newEmail = lowerIdentifier.includes('@') ? lowerIdentifier : null;
-
-      user = await prisma.user.create({
-        data: {
-          name: isAdminCredential ? 'Mrs. Chetna Kureel' : 'Sharna Member',
-          email: newEmail || (isAdminCredential ? 'sharnaapparels@gmail.com' : null),
-          phone: newPhone || rawIdentifier,
-          password: hashedPassword,
-          role: isAdminCredential ? 'ADMIN' : 'USER',
-          isVerified: true
-        }
-      });
-    } catch (createErr) {
-      console.warn("Auto-provision user warning:", createErr);
-    }
-  }
-
-  // If user exists in DB, ensure role is ADMIN for admin credentials and sync password
-  if (user && (isDefaultPassword || isAdminCredential)) {
-    try {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          password: hashedPassword,
-          role: isAdminCredential ? 'ADMIN' : user.role,
-          isVerified: true,
-          isBlocked: false
-        }
-      });
-    } catch (updateErr) {
-      console.warn("Password sync warning:", updateErr);
-    }
-  }
+  const user = await findUserByIdentifier(rawIdentifier);
 
   if (!user) {
-    if (isAdminCredential) {
-      const mockAdminId = 'admin_dev_01';
-      return res.json({
-        success: true,
-        token: generateToken(mockAdminId),
-        user: {
-          id: mockAdminId,
-          name: 'Mrs. Chetna Kureel',
-          email: rawIdentifier,
-          phone: '+919876543210',
-          role: 'ADMIN'
-        }
-      });
-    }
-    return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    return res.status(401).json({ 
+      success: false, 
+      message: 'Invalid email/phone or password. Please check your credentials.' 
+    });
   }
 
   if (user.isBlocked) {
-    return res.status(401).json({ success: false, message: 'Account is blocked' });
+    return res.status(403).json({ success: false, message: 'Your account has been suspended. Please contact customer support.' });
   }
 
-  const isMatch = user.password ? await bcrypt.compare(password, user.password) : false;
-  if (!isMatch && !isAdminCredential && !isDefaultPassword) {
-    return res.status(401).json({ success: false, message: 'Invalid credentials' });
+  if (!user.password) {
+    return res.status(401).json({ 
+      success: false, 
+      message: 'No password set on this account. Please log in using WhatsApp OTP or reset your password.' 
+    });
   }
 
-  // Ensure role is ADMIN if admin credentials were matched
-  const finalUser = { ...user, role: isAdminCredential ? 'ADMIN' : user.role };
+  // Compare hashed password with bcrypt
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    return res.status(401).json({ success: false, message: 'Incorrect password. Please try again.' });
+  }
+
+  const accessToken = generateAccessToken(user.id, user.role);
+  const refreshToken = generateRefreshToken(user.id, user.role);
+  setRefreshTokenCookie(res, refreshToken);
 
   res.json({
     success: true,
-    token: generateToken(user.id),
-    user: formatUserResponse(finalUser)
+    token: accessToken,
+    accessToken,
+    user: formatUserResponse(user)
   });
+};
+
+// ─── REFRESH TOKEN (POST /api/auth/refresh) ─────────────────────────
+exports.refresh = async (req, res) => {
+  try {
+    const refreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+    if (!refreshToken) {
+      return res.status(401).json({ success: false, message: 'Refresh token missing' });
+    }
+
+    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET || 'sharna_super_secure_jwt_secret_key_12345');
+    const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+
+    if (!user || user.isBlocked) {
+      return res.status(401).json({ success: false, message: 'User unauthorized or account blocked' });
+    }
+
+    const newAccessToken = generateAccessToken(user.id, user.role);
+    const newRefreshToken = generateRefreshToken(user.id, user.role);
+    setRefreshTokenCookie(res, newRefreshToken);
+
+    res.json({
+      success: true,
+      token: newAccessToken,
+      accessToken: newAccessToken,
+      user: formatUserResponse(user)
+    });
+  } catch (err) {
+    return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
+  }
+};
+
+// ─── LOGOUT (POST /api/auth/logout) ─────────────────────────────────
+exports.logout = async (req, res) => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'strict' : 'lax'
+  });
+  res.json({ success: true, message: 'Logged out successfully' });
 };
 
 // ─── GET PROFILE ─────────────────────────────────────────────────────────────
