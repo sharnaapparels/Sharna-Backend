@@ -91,7 +91,7 @@ const formatCustomerName = (orderDetails = {}) => {
 
 /**
  * Send Order Confirmation with Attached PDF Invoice via Meta WhatsApp Cloud API
- * Uses approved 'sharna_order_invoice' template (Document Header + Name, Order#, Amount body)
+ * Uses direct Meta Media Upload to bypass any CDN caching
  */
 const sendWhatsAppOrderInvoicePDF = async (phone, orderDetails, pdfUrl) => {
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '1286005934592878';
@@ -107,9 +107,50 @@ const sendWhatsAppOrderInvoicePDF = async (phone, orderDetails, pdfUrl) => {
   const totalAmt = String(Math.round(Number(orderDetails.totalAmount || 0)));
   const customerName = formatCustomerName(orderDetails);
 
-  const documentUrl = pdfUrl || orderDetails.pdfUrl || `https://sharna-backend-production.up.railway.app/api/orders/${rawId}/invoice.pdf`;
+  let docParam = null;
 
-  // 1. Primary Method: Meta Approved 'sharna_order_invoice' Template with PDF Document Header
+  // 1. Generate PDF buffer and upload directly to Meta Media API
+  try {
+    const FormData = require('form-data');
+    const { generateInvoicePDFBuffer } = require('./pdfInvoice.service');
+    const pdfBuf = await generateInvoicePDFBuffer(orderDetails);
+
+    const form = new FormData();
+    form.append('messaging_product', 'whatsapp');
+    form.append('type', 'application/pdf');
+    form.append('file', pdfBuf, {
+      filename: `SHARNA-Tax-Invoice-${orderId}.pdf`,
+      contentType: 'application/pdf'
+    });
+
+    const mediaRes = await axios.post(`https://graph.facebook.com/v21.0/${phoneNumberId}/media`, form, {
+      headers: {
+        ...form.getHeaders(),
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    if (mediaRes.data?.id) {
+      docParam = {
+        id: mediaRes.data.id,
+        filename: `SHARNA-Tax-Invoice-${orderId}.pdf`
+      };
+      console.log(`✅ Direct Meta Media PDF upload succeeded (Media ID: ${mediaRes.data.id})`);
+    }
+  } catch (mediaErr) {
+    console.warn('⚠️ Meta direct media upload notice, falling back to document link:', mediaErr.response?.data || mediaErr.message);
+  }
+
+  // Fallback to URL link if direct media upload is unavailable
+  if (!docParam) {
+    const documentUrl = pdfUrl || orderDetails.pdfUrl || `https://sharna-backend-production.up.railway.app/api/orders/${rawId}/invoice.pdf?t=${Date.now()}`;
+    docParam = {
+      link: documentUrl,
+      filename: `SHARNA-Tax-Invoice-${orderId}.pdf`
+    };
+  }
+
+  // 2. Dispatch Approved 'sharna_order_invoice' Template
   try {
     const templateDocPayload = {
       messaging_product: 'whatsapp',
@@ -124,17 +165,14 @@ const sendWhatsAppOrderInvoicePDF = async (phone, orderDetails, pdfUrl) => {
             parameters: [
               {
                 type: 'document',
-                document: {
-                  link: documentUrl,
-                  filename: `SHARNA-Tax-Invoice-${orderId}.pdf`
-                }
+                document: docParam
               }
             ]
           },
           {
             type: 'body',
             parameters: [
-              { type: 'text', text: customerName }, // {{1}} Name (e.g. "Mrs. Swati")
+              { type: 'text', text: customerName }, // {{1}} Name
               { type: 'text', text: orderId },      // {{2}} Order #
               { type: 'text', text: totalAmt }       // {{3}} Amount
             ]
@@ -150,14 +188,14 @@ const sendWhatsAppOrderInvoicePDF = async (phone, orderDetails, pdfUrl) => {
       }
     });
 
-    console.log(`✅ WhatsApp Order Invoice PDF Template sent to ${formattedPhone} (Message ID: ${response.data.messages?.[0]?.id})`);
+    console.log(`✅ WhatsApp Order Invoice PDF sent to ${formattedPhone} (Message ID: ${response.data.messages?.[0]?.id})`);
     return { success: true, messageId: response.data.messages?.[0]?.id };
   } catch (error) {
     const errData = error.response?.data;
     console.warn('⚠️ sharna_order_invoice template error, falling back to confirmation template:', errData || error.message);
   }
 
-  // 2. Fallback: Send standard text confirmation
+  // 3. Fallback: Send standard text confirmation
   return sendWhatsAppOrderConfirmation(phone, orderDetails);
 };
 
