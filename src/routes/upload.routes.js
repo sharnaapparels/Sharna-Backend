@@ -3,7 +3,7 @@ const router = express.Router();
 const { upload } = require('../config/cloudinary');
 const { protect, adminOnly } = require('../middleware/auth.middleware');
 
-// Upload single image
+// Upload single image (Admin only)
 // POST /api/upload/single
 router.post('/single', protect, adminOnly, upload.single('image'), (req, res) => {
   try {
@@ -19,11 +19,31 @@ router.post('/single', protect, adminOnly, upload.single('image'), (req, res) =>
       publicId: req.file.filename
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: 'Upload failed', error: error.message });
   }
 });
 
-// Upload multiple images (up to 5)
+// Upload customer review image (Authenticated Users only)
+// POST /api/upload/review
+router.post('/review', protect, upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Review image uploaded successfully',
+      url: req.file.path,
+      publicId: req.file.filename
+    });
+  } catch (error) {
+    console.error('Upload Error:', error);
+    res.status(500).json({ success: false, message: 'Upload failed', error: error.message });
+  }
+});
+
+// Upload multiple images (Admin only) (up to 5)
 // POST /api/upload/multiple
 router.post('/multiple', protect, adminOnly, upload.array('images', 5), (req, res) => {
   try {

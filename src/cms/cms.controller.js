@@ -45,7 +45,8 @@ const DEFAULT_HOMEPAGE_CONFIG = {
       name: "ANANYA S.",
       location: "MUMBAI",
       rating: 5,
-      isVerified: true
+      isVerified: true,
+      placement: "both"
     },
     {
       id: 't-2',
@@ -53,7 +54,8 @@ const DEFAULT_HOMEPAGE_CONFIG = {
       name: "PRIYA K.",
       location: "DELHI",
       rating: 5,
-      isVerified: true
+      isVerified: true,
+      placement: "both"
     },
     {
       id: 't-3',
@@ -61,7 +63,8 @@ const DEFAULT_HOMEPAGE_CONFIG = {
       name: "RITU M.",
       location: "BANGALORE",
       rating: 5,
-      isVerified: true
+      isVerified: true,
+      placement: "both"
     }
   ],
   ethnicCategories: [

@@ -2,11 +2,11 @@ const prisma = require('../config/database');
 
 // POST /api/reviews
 exports.createReview = async (req, res) => {
-  const { productId, rating, title, body } = req.body;
+  const { productId, rating, title, body, imageUrl } = req.body;
   const review = await prisma.review.upsert({
     where: { userId_productId: { userId: req.user.id, productId } },
-    update: { rating, title, body },
-    create: { userId: req.user.id, productId, rating, title, body }
+    update: { rating, title, body, imageUrl },
+    create: { userId: req.user.id, productId, rating, title, body, imageUrl }
   });
   res.status(201).json({ success: true, review });
 };

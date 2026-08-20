@@ -225,6 +225,7 @@ model Review {
   rating    Int      // 1-5
   title     String?
   body      String?  @db.Text
+  imageUrl  String?
   isVisible Boolean  @default(true)
   createdAt DateTime @default(now())
 
