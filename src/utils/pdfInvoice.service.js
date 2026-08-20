@@ -3,15 +3,13 @@ const path = require('path');
 const fs = require('fs');
 
 /**
- * Generate 100% Pixel-Perfect Luxury SHARNA Tax Invoice PDF
- * Exact 1:1 match to reference Image 2:
- * - Billed & Shipped To: Regular labels + Bold values inline
- * - Seller & Supplier Details: Clean matching alignment
- * - Logo & Tagline: Proper generous spacing (x=202) and vertical centering
+ * Generate 100% Official SHARNA Brand Kit Tax Invoice PDF with Proprietor Seal
+ * - Supports both Seal options: 'vector' (Clean Digital Seal) and 'real' (Real Inked Physical Stamp)
+ * - Perfect vertical & horizontal alignment with zero text overlapping
+ * - Official Typography: RudeSlab (Bold, Medium, Book)
  * - Indian Rupee symbol (₹) using NotoSans-Full with zero missing boxes
- * - Header & Date: Clean non-overlapping single-line layout
  */
-const generateInvoicePDFBuffer = (order = {}) => {
+const generateInvoicePDFBuffer = (order = {}, sealType = 'vector') => {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ margin: 0, size: 'A4' });
@@ -23,17 +21,17 @@ const generateInvoicePDFBuffer = (order = {}) => {
 
       const pageWidth = doc.page.width; // 595.28 pt
 
-      // Register Fonts
+      // Register Brand Kit Fonts (RudeSlab)
       const fontsDir = path.join(__dirname, '../assets/fonts');
-      const cinzelBold = path.join(fontsDir, 'Cinzel-Bold.ttf');
-      const dmSansReg = path.join(fontsDir, 'DMSans-Regular.ttf');
-      const dmSansBold = path.join(fontsDir, 'DMSans-Bold.ttf');
+      const rudeSlabBold = path.join(fontsDir, 'RudeSlab-Bold.otf');
+      const rudeSlabMedium = path.join(fontsDir, 'RudeSlab-Medium.otf');
+      const rudeSlabBook = path.join(fontsDir, 'RudeSlab-Book.otf');
       const notoSans = path.join(fontsDir, 'NotoSans-Full.ttf');
 
-      const fontCinzel = fs.existsSync(cinzelBold) ? cinzelBold : 'Times-Bold';
-      const fontReg = fs.existsSync(dmSansReg) ? dmSansReg : (fs.existsSync(notoSans) ? notoSans : 'Helvetica');
-      const fontBold = fs.existsSync(dmSansBold) ? dmSansBold : (fs.existsSync(notoSans) ? notoSans : 'Helvetica-Bold');
-      const fontRupee = fs.existsSync(notoSans) ? notoSans : (fs.existsSync(dmSansBold) ? dmSansBold : 'Helvetica');
+      const fontHeading = fs.existsSync(rudeSlabBold) ? rudeSlabBold : 'Helvetica-Bold';
+      const fontMedium = fs.existsSync(rudeSlabMedium) ? rudeSlabMedium : (fs.existsSync(rudeSlabBold) ? rudeSlabBold : 'Helvetica-Bold');
+      const fontBook = fs.existsSync(rudeSlabBook) ? rudeSlabBook : (fs.existsSync(notoSans) ? notoSans : 'Helvetica');
+      const fontRupee = fs.existsSync(notoSans) ? notoSans : 'Helvetica';
 
       // Extract details
       let parsedNotes = {};
@@ -55,7 +53,7 @@ const generateInvoicePDFBuffer = (order = {}) => {
       const customerName = parsedNotes.shippingName || order.shippingAddress?.fullName || order.user?.name || 'Mr.priyanshu lokhande';
       const customerEmail = parsedNotes.shippingEmail || order.user?.email || 'priyanshulokhande72@gmail.com';
       let customerPhone = parsedNotes.shippingPhone || order.shippingAddress?.phone || order.user?.phone || '7999715256';
-      if (!customerPhone.startsWith('+')) customerPhone = '+91' + customerPhone.replace(/\D/g, '').slice(-10);
+      if (!customerPhone.startsWith('+')) customerPhone = '+91 ' + customerPhone.replace(/\D/g, '').slice(-10);
 
       const street = order.shippingAddress?.streetAddress || order.shippingStreet || 'NH548C';
       const city = order.shippingAddress?.city || order.shippingCity || 'Khedi Sawligarh';
@@ -77,7 +75,7 @@ const generateInvoicePDFBuffer = (order = {}) => {
       const boxLeft = 24;
       const boxTop = 24;
       const boxWidth = pageWidth - boxLeft * 2; // 547.28 pt
-      const boxHeight = 490;
+      const boxHeight = 580;
 
       // Outer parchment box
       doc.rect(boxLeft, boxTop, boxWidth, boxHeight)
@@ -104,7 +102,7 @@ const generateInvoicePDFBuffer = (order = {}) => {
       // Two-Line Tagline beside Logo (starting at x=202 with clean 20 pt gap)
       doc.fillColor('#C5A86B')
          .fontSize(6.8)
-         .font(fontReg)
+         .font(fontMedium)
          .text("WOMEN'S ETHNIC LUXURY • CO-ORDS •", 202, headerTop + 10, { characterSpacing: 0.8, lineBreak: false })
          .text("KURTAS • SUITS", 202, headerTop + 21, { characterSpacing: 0.8, lineBreak: false });
 
@@ -114,24 +112,24 @@ const generateInvoicePDFBuffer = (order = {}) => {
       doc.roundedRect(badgeX, headerTop - 2, badgeWidth, 20, 2).fill('#6B3E3E');
 
       doc.fillColor('#FAF7F2')
-         .fontSize(8)
-         .font(fontCinzel)
+         .fontSize(8.5)
+         .font(fontHeading)
          .text('OFFICIAL TAX INVOICE', badgeX, headerTop + 4, { width: badgeWidth, align: 'center', characterSpacing: 1, lineBreak: false });
 
       // Meta: Invoice # and Date
       doc.fillColor('#7A6960')
          .fontSize(7.5)
-         .font(fontReg)
+         .font(fontBook)
          .text('Invoice #:', badgeX - 40, headerTop + 24, { width: badgeWidth + 40, align: 'right', lineBreak: false });
 
       doc.fillColor('#1E1915')
          .fontSize(8)
-         .font(fontBold)
+         .font(fontHeading)
          .text(invoiceNo, badgeX - 40, headerTop + 35, { width: badgeWidth + 40, align: 'right', lineBreak: false });
 
       doc.fillColor('#5C4E46')
          .fontSize(7.5)
-         .font(fontReg)
+         .font(fontBook)
          .text(`Date: ${invoiceDate}`, badgeX - 40, headerTop + 47, { width: badgeWidth + 40, align: 'right', lineBreak: false });
 
       // Header bottom divider line
@@ -141,7 +139,7 @@ const generateInvoicePDFBuffer = (order = {}) => {
          .lineTo(boxLeft + boxWidth - 18, headerLineY)
          .stroke();
 
-      // ── 3. SELLER & BUYER CARDS (EXACT MATCH TO IMAGE 2: REGULAR LABELS + BOLD VALUES) ──
+      // ── 3. SELLER & BUYER CARDS (RUDESLAB BRAND TYPOGRAPHY) ──
       const cardsY = headerLineY + 12;
       const cardWidth = (boxWidth - 48) / 2; // 249.6 pt
       const cardHeight = 115;
@@ -150,7 +148,7 @@ const generateInvoicePDFBuffer = (order = {}) => {
       const card1X = 42;
       doc.rect(card1X, cardsY, cardWidth, cardHeight).fillAndStroke('#FFFFFF', '#EAE1D5');
 
-      doc.fillColor('#6B3E3E').fontSize(8.5).font(fontCinzel)
+      doc.fillColor('#6B3E3E').fontSize(8.5).font(fontHeading)
          .text('SELLER & SUPPLIER DETAILS', card1X + 12, cardsY + 9, { lineBreak: false });
 
       doc.strokeColor('#EAE1D5').lineWidth(0.5)
@@ -158,30 +156,30 @@ const generateInvoicePDFBuffer = (order = {}) => {
          .lineTo(card1X + cardWidth - 12, cardsY + 21)
          .stroke();
 
-      doc.fillColor('#1E1915').fontSize(8.5).font(fontBold)
+      doc.fillColor('#1E1915').fontSize(8.5).font(fontHeading)
          .text('SHARNA (sharna.in)', card1X + 12, cardsY + 28, { lineBreak: false });
 
-      doc.fillColor('#5C4E46').fontSize(7.8).font(fontReg)
+      doc.fillColor('#5C4E46').fontSize(7.8).font(fontBook)
          .text('Studio & Flagship Headquarters', card1X + 12, cardsY + 41, { lineBreak: false })
          .text('Jabalpur, Madhya Pradesh – 482001, India', card1X + 12, cardsY + 54, { lineBreak: false });
 
-      doc.font(fontReg).fillColor('#5C4E46')
+      doc.font(fontBook).fillColor('#5C4E46')
          .text('Support Phone: ', card1X + 12, cardsY + 70, { continued: true, lineBreak: false })
-         .font(fontBold).fillColor('#1E1915').text('+91 62682 18135', { lineBreak: false });
+         .font(fontHeading).fillColor('#1E1915').text('+91 62682 18135', { lineBreak: false });
 
-      doc.font(fontReg).fillColor('#5C4E46')
+      doc.font(fontBook).fillColor('#5C4E46')
          .text('Support Email: ', card1X + 12, cardsY + 83, { continued: true, lineBreak: false })
-         .font(fontBold).fillColor('#1E1915').text('support@sharna.in', { lineBreak: false });
+         .font(fontHeading).fillColor('#1E1915').text('support@sharna.in', { lineBreak: false });
 
-      doc.font(fontReg).fillColor('#5C4E46')
+      doc.font(fontBook).fillColor('#5C4E46')
          .text('Website: ', card1X + 12, cardsY + 96, { continued: true, lineBreak: false })
-         .font(fontBold).fillColor('#1E1915').text('https://sharna.in', { lineBreak: false });
+         .font(fontHeading).fillColor('#1E1915').text('https://sharna.in', { lineBreak: false });
 
-      // Card 2: Billed & Shipped To (Image 2 Exact: Regular Label + Bold Value)
+      // Card 2: Billed & Shipped To
       const card2X = card1X + cardWidth + 12;
       doc.rect(card2X, cardsY, cardWidth, cardHeight).fillAndStroke('#FFFFFF', '#EAE1D5');
 
-      doc.fillColor('#6B3E3E').fontSize(8.5).font(fontCinzel)
+      doc.fillColor('#6B3E3E').fontSize(8.5).font(fontHeading)
          .text('BILLED & SHIPPED TO', card2X + 12, cardsY + 9, { lineBreak: false });
 
       doc.strokeColor('#EAE1D5').lineWidth(0.5)
@@ -190,30 +188,30 @@ const generateInvoicePDFBuffer = (order = {}) => {
          .stroke();
 
       // Customer Name
-      doc.font(fontReg).fontSize(7.8).fillColor('#5C4E46')
+      doc.font(fontBook).fontSize(7.8).fillColor('#5C4E46')
          .text('Customer Name: ', card2X + 12, cardsY + 28, { continued: true, lineBreak: false })
-         .font(fontBold).fontSize(8).fillColor('#1E1915').text(customerName, { lineBreak: false });
+         .font(fontHeading).fontSize(8).fillColor('#1E1915').text(customerName, { lineBreak: false });
 
       // Address
-      doc.font(fontReg).fontSize(7.8).fillColor('#5C4E46')
+      doc.font(fontBook).fontSize(7.8).fillColor('#5C4E46')
          .text('Address: ', card2X + 12, cardsY + 41, { continued: true, lineBreak: false })
-         .font(fontBold).fillColor('#1E1915').text(street, { lineBreak: false });
+         .font(fontHeading).fillColor('#1E1915').text(street, { lineBreak: false });
 
-      // City, State, Pincode, Country (with bold pincode)
-      doc.font(fontReg).fontSize(7.8).fillColor('#5C4E46')
+      // City, State, Pincode, Country
+      doc.font(fontBook).fontSize(7.8).fillColor('#5C4E46')
          .text(`${city}, ${state} – `, card2X + 12, cardsY + 54, { continued: true, lineBreak: false })
-         .font(fontBold).fillColor('#1E1915').text(pincode, { continued: true, lineBreak: false })
-         .font(fontReg).fillColor('#5C4E46').text(`, ${country}`, { lineBreak: false });
+         .font(fontHeading).fillColor('#1E1915').text(pincode, { continued: true, lineBreak: false })
+         .font(fontBook).fillColor('#5C4E46').text(`, ${country}`, { lineBreak: false });
 
       // Phone
-      doc.font(fontReg).fontSize(7.8).fillColor('#5C4E46')
+      doc.font(fontBook).fontSize(7.8).fillColor('#5C4E46')
          .text('Phone: ', card2X + 12, cardsY + 70, { continued: true, lineBreak: false })
-         .font(fontBold).fillColor('#1E1915').text(customerPhone, { lineBreak: false });
+         .font(fontHeading).fillColor('#1E1915').text(customerPhone, { lineBreak: false });
 
       // Email
-      doc.font(fontReg).fontSize(7.8).fillColor('#5C4E46')
+      doc.font(fontBook).fontSize(7.8).fillColor('#5C4E46')
          .text('Email: ', card2X + 12, cardsY + 83, { continued: true, lineBreak: false })
-         .font(fontBold).fillColor('#1E1915').text(customerEmail, { lineBreak: false });
+         .font(fontHeading).fillColor('#1E1915').text(customerEmail, { lineBreak: false });
 
       // ── 4. ITEMS TABLE ──
       const tableY = cardsY + cardHeight + 12;
@@ -222,7 +220,7 @@ const generateInvoicePDFBuffer = (order = {}) => {
       // Burgundy Table Header Bar
       doc.rect(42, tableY, tableWidth, 22).fill('#6B3E3E');
 
-      doc.fillColor('#FAF7F2').fontSize(8).font(fontCinzel)
+      doc.fillColor('#FAF7F2').fontSize(8).font(fontHeading)
          .text('#', 46, tableY + 6, { width: 22, align: 'center', lineBreak: false })
          .text('ITEM DESCRIPTION', 76, tableY + 6, { width: 195, lineBreak: false })
          .text('SIZE / COLOR', 272, tableY + 6, { width: 95, align: 'center', lineBreak: false })
@@ -248,29 +246,29 @@ const generateInvoicePDFBuffer = (order = {}) => {
         doc.rect(42, rowY, tableWidth, 34).fillAndStroke('#FFFFFF', '#F0E6D8');
 
         // Item Index
-        doc.fillColor('#7A6960').fontSize(8).font(fontReg)
+        doc.fillColor('#7A6960').fontSize(8).font(fontBook)
            .text(String(index + 1), 46, rowY + 11, { width: 22, align: 'center', lineBreak: false });
 
         // Title + HSN
-        doc.fillColor('#1E1915').fontSize(8.5).font(fontBold)
+        doc.fillColor('#1E1915').fontSize(8.5).font(fontHeading)
            .text(itemTitle, 76, rowY + 7, { width: 195, lineBreak: false });
 
-        doc.fillColor('#8A796E').fontSize(7).font(fontReg)
+        doc.fillColor('#8A796E').fontSize(7).font(fontBook)
            .text('HSN Code: 6204 • Handcrafted Ethnic Garment', 76, rowY + 19, { width: 195, lineBreak: false });
 
         // Pill Badges for Size & Color
         const badge1X = 272;
         doc.rect(badge1X, rowY + 9, 44, 15).fillAndStroke('#FAF4EB', '#EAE1D5');
-        doc.fillColor('#5C4E46').fontSize(7).font(fontReg)
+        doc.fillColor('#5C4E46').fontSize(7).font(fontBook)
            .text(`Size: ${itemSize}`, badge1X, rowY + 12, { width: 44, align: 'center', lineBreak: false });
 
         const badge2X = badge1X + 48;
         doc.rect(badge2X, rowY + 9, 54, 15).fillAndStroke('#FAF4EB', '#EAE1D5');
-        doc.fillColor('#5C4E46').fontSize(7).font(fontReg)
+        doc.fillColor('#5C4E46').fontSize(7).font(fontBook)
            .text(`Color: ${itemColor}`, badge2X, rowY + 12, { width: 54, align: 'center', lineBreak: false });
 
         // Qty, Price, Amount with native Unicode Rupee font
-        doc.fillColor('#1E1915').fontSize(8.5).font(fontBold)
+        doc.fillColor('#1E1915').fontSize(8.5).font(fontHeading)
            .text(String(itemQty), 370, rowY + 11, { width: 35, align: 'center', lineBreak: false });
 
         doc.fillColor('#5C4E46').fontSize(8.5).font(fontRupee)
@@ -291,10 +289,10 @@ const generateInvoicePDFBuffer = (order = {}) => {
       const leftSumX = 42;
       doc.rect(leftSumX, summaryY, sumCardWidth, sumCardHeight).fillAndStroke('#FFFFFF', '#EAE1D5');
 
-      doc.fillColor('#488B49').fontSize(8).font(fontBold)
+      doc.fillColor('#488B49').fontSize(8).font(fontHeading)
          .text('PAYMENT CONFIRMED (PAID ONLINE)', leftSumX + 12, summaryY + 10, { lineBreak: false });
 
-      doc.fillColor('#5C4E46').fontSize(7.5).font(fontReg)
+      doc.fillColor('#5C4E46').fontSize(7.5).font(fontBook)
          .text('Transaction Processed via Razorpay Secured Gateway.', leftSumX + 12, summaryY + 24, { lineBreak: false })
          .text('All taxes (CGST 6% + SGST 6%) are included in total amount as per Indian GST Regulations.', leftSumX + 12, summaryY + 38, { width: sumCardWidth - 24 });
 
@@ -302,14 +300,14 @@ const generateInvoicePDFBuffer = (order = {}) => {
       const rightSumX = leftSumX + sumCardWidth + 12;
       doc.rect(rightSumX, summaryY, sumCardWidth, sumCardHeight).fillAndStroke('#FFFFFF', '#EAE1D5');
 
-      doc.fillColor('#5C4E46').fontSize(7.8).font(fontReg)
+      doc.fillColor('#5C4E46').fontSize(7.8).font(fontBook)
          .text('Item Subtotal (Excl. Tax):', rightSumX + 12, summaryY + 10, { lineBreak: false });
       doc.font(fontRupee).text(formatINR(taxableValue), rightSumX + sumCardWidth - 100, summaryY + 10, { width: 88, align: 'right', lineBreak: false });
 
-      doc.font(fontReg).text('Estimated GST (12%):', rightSumX + 12, summaryY + 22, { lineBreak: false });
+      doc.font(fontBook).text('Estimated GST (12%):', rightSumX + 12, summaryY + 22, { lineBreak: false });
       doc.font(fontRupee).text(formatINR(totalGst), rightSumX + sumCardWidth - 100, summaryY + 22, { width: 88, align: 'right', lineBreak: false });
 
-      doc.font(fontReg).text('Shipping & Logistics:', rightSumX + 12, summaryY + 34, { lineBreak: false });
+      doc.font(fontBook).text('Shipping & Logistics:', rightSumX + 12, summaryY + 34, { lineBreak: false });
       doc.fillColor('#488B49').font(fontRupee)
          .text(shippingAmount === 0 ? 'Complimentary' : formatINR(shippingAmount), rightSumX + sumCardWidth - 110, summaryY + 34, { width: 98, align: 'right', lineBreak: false });
 
@@ -319,17 +317,44 @@ const generateInvoicePDFBuffer = (order = {}) => {
          .lineTo(rightSumX + sumCardWidth - 10, summaryY + 48)
          .stroke();
 
-      doc.fillColor('#1E1915').fontSize(10).font(fontCinzel)
+      doc.fillColor('#1E1915').fontSize(10).font(fontHeading)
          .text('TOTAL PAID:', rightSumX + 12, summaryY + 58, { lineBreak: false });
 
       doc.fillColor('#1E1915').fontSize(11).font(fontRupee)
          .text(formatINR(totalAmount), rightSumX + sumCardWidth - 120, summaryY + 57, { width: 108, align: 'right', lineBreak: false });
 
-      // ── 6. FOOTER ──
-      const footerY = summaryY + sumCardHeight + 14;
-      doc.fillColor('#7A6960').fontSize(7.5).font(fontReg)
+      // ── 6. PROPRIETOR SEAL STAMP & SIGNATURE SECTION (PERFECTLY ALIGNED) ──
+      const sealSectionY = summaryY + sumCardHeight + 14;
+      const chosenSealFile = sealType === 'real' ? 'seal_real_ink.jpg' : 'seal_stamp.jpg';
+      const sealStampPath = path.join(__dirname, '../assets', chosenSealFile);
+
+      const sealBoxWidth = 140;
+      const sealBoxX = rightSumX + sumCardWidth - sealBoxWidth; // 413.2 pt
+
+      // 'For SHARNA' Heading
+      doc.fillColor('#1E1915').fontSize(8.5).font(fontHeading)
+         .text('For SHARNA', sealBoxX, sealSectionY, { width: sealBoxWidth, align: 'center', lineBreak: false });
+
+      // Stamp Image with dedicated vertical space
+      if (fs.existsSync(sealStampPath)) {
+        try {
+          const imgWidth = 84;
+          const imgX = sealBoxX + (sealBoxWidth - imgWidth) / 2;
+          doc.image(sealStampPath, imgX, sealSectionY + 12, { width: imgWidth });
+        } catch (e) {
+          console.warn('Seal stamp render note:', e);
+        }
+      }
+
+      // 'Authorised Signatory / Proprietor' below image with zero overlap
+      doc.fillColor('#7A6960').fontSize(7.5).font(fontBook)
+         .text('Authorised Signatory / Proprietor', sealBoxX - 10, sealSectionY + 68, { width: sealBoxWidth + 20, align: 'center', lineBreak: false });
+
+      // ── 7. FOOTER ──
+      const footerY = sealSectionY + 84;
+      doc.fillColor('#7A6960').fontSize(7.5).font(fontBook)
          .text('Thank you for choosing SHARNA. For returns, exchanges or support inquiries, please contact support@sharna.in.', 42, footerY, { width: boxWidth - 36, align: 'center', lineBreak: false })
-         .text('This is a computer-generated official tax receipt. No signature is required.', 42, footerY + 11, { width: boxWidth - 36, align: 'center', lineBreak: false });
+         .text('This is a computer-generated official tax receipt. Authenticated with official proprietor seal.', 42, footerY + 11, { width: boxWidth - 36, align: 'center', lineBreak: false });
 
       doc.end();
     } catch (err) {

@@ -78,15 +78,31 @@ const generateInvoiceHTML = (order = {}) => {
   <!-- html2pdf Library for Instant Direct PDF File Generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Montserrat:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
     
+    @font-face {
+      font-family: 'RudeSlab';
+      src: url('/src/assets/fonts/RudeSlab-Bold.otf') format('opentype');
+      font-weight: 700;
+    }
+    @font-face {
+      font-family: 'RudeSlab';
+      src: url('/src/assets/fonts/RudeSlab-Medium.otf') format('opentype');
+      font-weight: 500;
+    }
+    @font-face {
+      font-family: 'RudeSlab';
+      src: url('/src/assets/fonts/RudeSlab-Book.otf') format('opentype');
+      font-weight: 400;
+    }
+
     * { box-sizing: border-box; }
     body {
       margin: 0;
       padding: 24px;
       background-color: #ffffff;
       color: #2D231E;
-      font-family: 'DM Sans', 'Montserrat', -apple-system, sans-serif;
+      font-family: 'RudeSlab', 'DM Sans', 'Montserrat', -apple-system, sans-serif;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
     }

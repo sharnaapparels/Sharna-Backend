@@ -26,7 +26,7 @@ async function ensureAdmin() {
   } else {
     await prisma.user.create({
       data: {
-        name: 'Mrs. Swati Kureel',
+        name: 'Mrs. Chetna Kureel',
         email: adminEmail,
         phone: '+919324503975',
         password: hashedPassword,
@@ -47,7 +47,7 @@ async function ensureAdmin() {
     await prisma.user.update({
       where: { id: existingSwati.id },
       data: {
-        name: 'Mrs. Swati Kureel',
+        name: 'Mrs. Chetna Kureel',
         password: hashedPassword,
         role: 'ADMIN',
         isVerified: true,
@@ -58,7 +58,7 @@ async function ensureAdmin() {
   } else {
     await prisma.user.create({
       data: {
-        name: 'Mrs. Swati Kureel',
+        name: 'Mrs. Chetna Kureel',
         email: swatiEmail,
         phone: '+917999715256',
         password: hashedPassword,
