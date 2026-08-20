@@ -4,11 +4,11 @@ const fs = require('fs');
 
 /**
  * Generate 100% Pixel-Perfect Luxury SHARNA Tax Invoice PDF
- * - Native Unicode Indian Rupee symbol (₹) using NotoSans-Full font (NO missing character boxes)
- * - Zero overlap between logo and tagline
- * - Single-line non-overlapping Date rendering
- * - Symmetrical Seller & Buyer Cards
- * - Clean aligned Table and Summary
+ * - Perfect vertical logo & tagline centering
+ * - Symmetrical Seller & Buyer Cards (GSTIN removed, clean aligned single-string layout)
+ * - Removed missing glyph box before PAYMENT CONFIRMED (PAID ONLINE)
+ * - Real Unicode Rupee (₹) symbols
+ * - Exact non-overlapping Date & Header
  */
 const generateInvoicePDFBuffer = (order = {}) => {
   return new Promise((resolve, reject) => {
@@ -22,7 +22,7 @@ const generateInvoicePDFBuffer = (order = {}) => {
 
       const pageWidth = doc.page.width; // 595.28 pt
 
-      // Register Fonts with complete Unicode & Rupee glyph support
+      // Register Fonts
       const fontsDir = path.join(__dirname, '../assets/fonts');
       const cinzelBold = path.join(fontsDir, 'Cinzel-Bold.ttf');
       const notoSans = path.join(fontsDir, 'NotoSans-Full.ttf');
@@ -71,7 +71,7 @@ const generateInvoicePDFBuffer = (order = {}) => {
       const boxLeft = 24;
       const boxTop = 24;
       const boxWidth = pageWidth - boxLeft * 2; // 547.28 pt
-      const boxHeight = 500;
+      const boxHeight = 490;
 
       // Outer parchment box
       doc.rect(boxLeft, boxTop, boxWidth, boxHeight)
@@ -85,60 +85,60 @@ const generateInvoicePDFBuffer = (order = {}) => {
          .undash();
 
       // ── 2. BRAND HEADER ──
-      const headerTop = 42;
+      const headerTop = 40;
       const logoPath = path.join(__dirname, '../assets/logo.png');
 
-      // Draw Logo Image (Width constrained to 130 pt so it NEVER touches the tagline)
+      // Draw Logo Image with clean balanced height
       if (fs.existsSync(logoPath)) {
         try {
-          doc.image(logoPath, 42, headerTop - 2, { width: 130 });
+          doc.image(logoPath, 42, headerTop, { height: 42 });
         } catch (e) {}
       }
 
-      // Two-Line Tagline beside Logo (starting at x=184 with clean margin)
+      // Two-Line Tagline beside Logo (vertically centered with logo at y=52 and y=64)
       doc.fillColor('#C5A86B')
          .fontSize(6.8)
          .font(fontBody)
-         .text("WOMEN'S ETHNIC LUXURY • CO-ORDS •", 184, headerTop + 10, { characterSpacing: 0.8, lineBreak: false })
-         .text("KURTAS • SUITS", 184, headerTop + 21, { characterSpacing: 0.8, lineBreak: false });
+         .text("WOMEN'S ETHNIC LUXURY • CO-ORDS •", 184, headerTop + 12, { characterSpacing: 0.8, lineBreak: false })
+         .text("KURTAS • SUITS", 184, headerTop + 24, { characterSpacing: 0.8, lineBreak: false });
 
       // Right Burgundy Badge
       const badgeWidth = 142;
       const badgeX = boxLeft + boxWidth - 18 - badgeWidth; // 411.28 pt
-      doc.roundedRect(badgeX, headerTop - 4, badgeWidth, 20, 2).fill('#6B3E3E');
+      doc.roundedRect(badgeX, headerTop - 2, badgeWidth, 20, 2).fill('#6B3E3E');
 
       doc.fillColor('#FAF7F2')
          .fontSize(8)
          .font(fontCinzel)
-         .text('OFFICIAL TAX INVOICE', badgeX, headerTop + 2, { width: badgeWidth, align: 'center', characterSpacing: 1, lineBreak: false });
+         .text('OFFICIAL TAX INVOICE', badgeX, headerTop + 4, { width: badgeWidth, align: 'center', characterSpacing: 1, lineBreak: false });
 
-      // Meta: Invoice # and Date (NO OVERLAP: single direct string per line)
+      // Meta: Invoice # and Date
       doc.fillColor('#7A6960')
          .fontSize(7.5)
          .font(fontBody)
-         .text('Invoice #:', badgeX - 40, headerTop + 22, { width: badgeWidth + 40, align: 'right', lineBreak: false });
+         .text('Invoice #:', badgeX - 40, headerTop + 24, { width: badgeWidth + 40, align: 'right', lineBreak: false });
 
       doc.fillColor('#1E1915')
          .fontSize(8)
          .font(fontBody)
-         .text(invoiceNo, badgeX - 40, headerTop + 33, { width: badgeWidth + 40, align: 'right', lineBreak: false });
+         .text(invoiceNo, badgeX - 40, headerTop + 35, { width: badgeWidth + 40, align: 'right', lineBreak: false });
 
       doc.fillColor('#5C4E46')
          .fontSize(7.5)
          .font(fontBody)
-         .text(`Date: ${invoiceDate}`, badgeX - 40, headerTop + 45, { width: badgeWidth + 40, align: 'right', lineBreak: false });
+         .text(`Date: ${invoiceDate}`, badgeX - 40, headerTop + 47, { width: badgeWidth + 40, align: 'right', lineBreak: false });
 
       // Header bottom divider line
-      const headerLineY = headerTop + 60;
+      const headerLineY = headerTop + 62;
       doc.strokeColor('#6B3E3E').lineWidth(1.5)
          .moveTo(42, headerLineY)
          .lineTo(boxLeft + boxWidth - 18, headerLineY)
          .stroke();
 
-      // ── 3. SELLER & BUYER CARDS (SYMMETRICAL) ──
+      // ── 3. SELLER & BUYER CARDS (100% SYMMETRICAL, NO GSTIN, CLEAN NATURAL SPACING) ──
       const cardsY = headerLineY + 12;
       const cardWidth = (boxWidth - 48) / 2; // 249.6 pt
-      const cardHeight = 118;
+      const cardHeight = 115;
 
       // Card 1: Seller Details
       const card1X = 42;
@@ -153,30 +153,14 @@ const generateInvoicePDFBuffer = (order = {}) => {
          .stroke();
 
       doc.fillColor('#1E1915').fontSize(8.5).font(fontBody)
-         .text('SHARNA (sharna.in)', card1X + 12, cardsY + 27, { lineBreak: false });
+         .text('SHARNA (sharna.in)', card1X + 12, cardsY + 28, { lineBreak: false });
 
       doc.fillColor('#5C4E46').fontSize(7.8).font(fontBody)
-         .text('Studio & Flagship Headquarters', card1X + 12, cardsY + 39, { lineBreak: false })
-         .text('Jabalpur, Madhya Pradesh – 482001, India', card1X + 12, cardsY + 51, { lineBreak: false });
-
-      doc.text('GSTIN: ', card1X + 12, cardsY + 63, { lineBreak: false });
-      doc.fillColor('#1E1915')
-         .text('23AAGCS1234F1Z9', card1X + 46, cardsY + 63, { lineBreak: false });
-
-      doc.fillColor('#5C4E46')
-         .text('Support Phone: ', card1X + 12, cardsY + 75, { lineBreak: false });
-      doc.fillColor('#1E1915')
-         .text('+91 62682 18135', card1X + 80, cardsY + 75, { lineBreak: false });
-
-      doc.fillColor('#5C4E46')
-         .text('Support Email: ', card1X + 12, cardsY + 87, { lineBreak: false });
-      doc.fillColor('#1E1915')
-         .text('support@sharna.in', card1X + 76, cardsY + 87, { lineBreak: false });
-
-      doc.fillColor('#5C4E46')
-         .text('Website: ', card1X + 12, cardsY + 99, { lineBreak: false });
-      doc.fillColor('#1E1915')
-         .text('https://sharna.in', card1X + 54, cardsY + 99, { lineBreak: false });
+         .text('Studio & Flagship Headquarters', card1X + 12, cardsY + 41, { lineBreak: false })
+         .text('Jabalpur, Madhya Pradesh – 482001, India', card1X + 12, cardsY + 54, { lineBreak: false })
+         .text('Support Phone: +91 62682 18135', card1X + 12, cardsY + 70, { lineBreak: false })
+         .text('Support Email: support@sharna.in', card1X + 12, cardsY + 83, { lineBreak: false })
+         .text('Website: https://sharna.in', card1X + 12, cardsY + 96, { lineBreak: false });
 
       // Card 2: Billed & Shipped To
       const card2X = card1X + cardWidth + 12;
@@ -190,28 +174,14 @@ const generateInvoicePDFBuffer = (order = {}) => {
          .lineTo(card2X + cardWidth - 12, cardsY + 21)
          .stroke();
 
+      doc.fillColor('#1E1915').fontSize(8.5).font(fontBody)
+         .text(`Customer Name: ${customerName}`, card2X + 12, cardsY + 28, { width: cardWidth - 24, lineBreak: false });
+
       doc.fillColor('#5C4E46').fontSize(7.8).font(fontBody)
-         .text('Customer Name: ', card2X + 12, cardsY + 27, { lineBreak: false });
-      doc.fillColor('#1E1915').fontSize(8)
-         .text(customerName, card2X + 84, cardsY + 27, { width: cardWidth - 96, lineBreak: false });
-
-      doc.fillColor('#5C4E46').fontSize(7.8)
-         .text('Address: ', card2X + 12, cardsY + 39, { lineBreak: false });
-      doc.fillColor('#1E1915')
-         .text(street, card2X + 54, cardsY + 39, { lineBreak: false });
-
-      doc.fillColor('#5C4E46')
-         .text(`${city}, ${state} – ${pincode}, ${country}`, card2X + 12, cardsY + 51, { width: cardWidth - 24, lineBreak: false });
-
-      doc.fillColor('#5C4E46')
-         .text('Phone: ', card2X + 12, cardsY + 75, { lineBreak: false });
-      doc.fillColor('#1E1915')
-         .text(customerPhone, card2X + 48, cardsY + 75, { lineBreak: false });
-
-      doc.fillColor('#5C4E46')
-         .text('Email: ', card2X + 12, cardsY + 87, { lineBreak: false });
-      doc.fillColor('#1E1915')
-         .text(customerEmail, card2X + 42, cardsY + 87, { width: cardWidth - 54, lineBreak: false });
+         .text(`Address: ${street}`, card2X + 12, cardsY + 41, { width: cardWidth - 24, lineBreak: false })
+         .text(`${city}, ${state} – ${pincode}, ${country}`, card2X + 12, cardsY + 54, { width: cardWidth - 24, lineBreak: false })
+         .text(`Phone: ${customerPhone}`, card2X + 12, cardsY + 70, { lineBreak: false })
+         .text(`Email: ${customerEmail}`, card2X + 12, cardsY + 83, { width: cardWidth - 24, lineBreak: false });
 
       // ── 4. ITEMS TABLE ──
       const tableY = cardsY + cardHeight + 12;
@@ -280,7 +250,7 @@ const generateInvoicePDFBuffer = (order = {}) => {
         rowY += 34;
       });
 
-      // ── 5. SUMMARY CARDS ──
+      // ── 5. SUMMARY CARDS (NO MISSING BOX BEFORE PAYMENT CONFIRMED) ──
       const summaryY = rowY + 12;
       const sumCardWidth = (boxWidth - 48) / 2;
       const sumCardHeight = 82;
@@ -290,7 +260,7 @@ const generateInvoicePDFBuffer = (order = {}) => {
       doc.rect(leftSumX, summaryY, sumCardWidth, sumCardHeight).fillAndStroke('#FFFFFF', '#EAE1D5');
 
       doc.fillColor('#488B49').fontSize(8).font(fontBody)
-         .text('✔ PAYMENT CONFIRMED (PAID ONLINE)', leftSumX + 12, summaryY + 10, { lineBreak: false });
+         .text('PAYMENT CONFIRMED (PAID ONLINE)', leftSumX + 12, summaryY + 10, { lineBreak: false });
 
       doc.fillColor('#5C4E46').fontSize(7.5).font(fontBody)
          .text('Transaction Processed via Razorpay Secured Gateway.', leftSumX + 12, summaryY + 24, { lineBreak: false })
