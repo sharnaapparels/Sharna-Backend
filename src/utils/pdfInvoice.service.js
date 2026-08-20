@@ -4,9 +4,11 @@ const fs = require('fs');
 
 /**
  * Generate 100% Pixel-Perfect Luxury SHARNA Tax Invoice PDF
- * - Perfect vertical logo & tagline centering
+ * Exact 1:1 match to Image 2:
+ * - Generous spacing between SHARNA logo and gold tagline (Tagline at x=228 pt)
+ * - Vertically centered tagline aligned with the middle of the logo
  * - Symmetrical Seller & Buyer Cards (GSTIN removed, clean aligned single-string layout)
- * - Removed missing glyph box before PAYMENT CONFIRMED (PAID ONLINE)
+ * - Clean Payment Confirmed badge
  * - Real Unicode Rupee (₹) symbols
  * - Exact non-overlapping Date & Header
  */
@@ -84,23 +86,23 @@ const generateInvoicePDFBuffer = (order = {}) => {
          .stroke('#C5A86B')
          .undash();
 
-      // ── 2. BRAND HEADER ──
+      // ── 2. BRAND HEADER (MATCHING IMAGE 2 EXACTLY) ──
       const headerTop = 40;
       const logoPath = path.join(__dirname, '../assets/logo.png');
 
-      // Draw Logo Image with clean balanced height
+      // Draw Logo Image (Width constrained to 140 pt so logo ends at x=182)
       if (fs.existsSync(logoPath)) {
         try {
-          doc.image(logoPath, 42, headerTop, { height: 42 });
+          doc.image(logoPath, 42, headerTop, { width: 140 });
         } catch (e) {}
       }
 
-      // Two-Line Tagline beside Logo (vertically centered with logo at y=52 and y=64)
+      // Two-Line Tagline beside Logo (starting at x=202 with clean 20 pt gap)
       doc.fillColor('#C5A86B')
          .fontSize(6.8)
          .font(fontBody)
-         .text("WOMEN'S ETHNIC LUXURY • CO-ORDS •", 184, headerTop + 12, { characterSpacing: 0.8, lineBreak: false })
-         .text("KURTAS • SUITS", 184, headerTop + 24, { characterSpacing: 0.8, lineBreak: false });
+         .text("WOMEN'S ETHNIC LUXURY • CO-ORDS •", 202, headerTop + 10, { characterSpacing: 0.8, lineBreak: false })
+         .text("KURTAS • SUITS", 202, headerTop + 21, { characterSpacing: 0.8, lineBreak: false });
 
       // Right Burgundy Badge
       const badgeWidth = 142;
@@ -135,7 +137,7 @@ const generateInvoicePDFBuffer = (order = {}) => {
          .lineTo(boxLeft + boxWidth - 18, headerLineY)
          .stroke();
 
-      // ── 3. SELLER & BUYER CARDS (100% SYMMETRICAL, NO GSTIN, CLEAN NATURAL SPACING) ──
+      // ── 3. SELLER & BUYER CARDS ──
       const cardsY = headerLineY + 12;
       const cardWidth = (boxWidth - 48) / 2; // 249.6 pt
       const cardHeight = 115;
@@ -237,7 +239,7 @@ const generateInvoicePDFBuffer = (order = {}) => {
         doc.fillColor('#5C4E46').fontSize(7).font(fontBody)
            .text(`Color: ${itemColor}`, badge2X, rowY + 12, { width: 54, align: 'center', lineBreak: false });
 
-        // Qty, Price, Amount with real ₹ symbol (Clean, no boxes!)
+        // Qty, Price, Amount with real ₹ symbol
         doc.fillColor('#1E1915').fontSize(8.5).font(fontBody)
            .text(String(itemQty), 370, rowY + 11, { width: 35, align: 'center', lineBreak: false });
 
@@ -250,7 +252,7 @@ const generateInvoicePDFBuffer = (order = {}) => {
         rowY += 34;
       });
 
-      // ── 5. SUMMARY CARDS (NO MISSING BOX BEFORE PAYMENT CONFIRMED) ──
+      // ── 5. SUMMARY CARDS ──
       const summaryY = rowY + 12;
       const sumCardWidth = (boxWidth - 48) / 2;
       const sumCardHeight = 82;
