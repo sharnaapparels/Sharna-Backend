@@ -305,7 +305,7 @@ exports.viewInvoiceHTML = async (req, res) => {
         <img src="https://sharna.in/src/assets/logo.png" alt="SHARNA" class="brand-logo-img" onerror="this.style.display='none'" />
         <div class="brand-text-wrap">
           <div style="font-family: 'Cinzel', serif; font-size: 26px; font-weight: 700; color: #1E1915; letter-spacing: 0.1em;">SHARNA</div>
-          <div class="brand-tagline">Women's Ethnic Luxury • Sarees • Kurtas • Suits</div>
+          <div class="brand-tagline">Women's Ethnic Luxury • Co-ords • Kurtas • Suits</div>
         </div>
       </div>
       <div class="invoice-title-badge">
@@ -319,12 +319,12 @@ exports.viewInvoiceHTML = async (req, res) => {
     <div class="meta-grid">
       <div class="info-card">
         <h4>Seller & Supplier Details</h4>
-        <p><strong>SHARNA Luxury Ethnic Apparel</strong></p>
+        <p><strong>SHARNA (sharna.in)</strong></p>
         <p>Studio & Flagship Headquarters</p>
         <p>Jabalpur, Madhya Pradesh - <strong>482001</strong>, India</p>
         <p>GSTIN: <strong>23AAGCS1234F1Z9</strong></p>
         <p>Support Phone: <strong>+91 62682 18135</strong></p>
-        <p>Support Email: <strong>sharnaapparels@gmail.com</strong></p>
+        <p>Support Email: <strong>support@sharna.in</strong></p>
         <p>Website: <strong>https://sharna.in</strong></p>
       </div>
       <div class="info-card">
