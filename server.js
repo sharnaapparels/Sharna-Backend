@@ -181,3 +181,33 @@ const startServer = async () => {
 };
 
 startServer();
+
+// ── KEEP-ALIVE SELF-PING ─────────────────────────────────────────────────────
+// Prevents Railway server from sleeping, which causes 10-15s cold start delays
+// when users visit the site after any period of inactivity.
+const SELF_PING_INTERVAL_MS = 10 * 60 * 1000; // every 10 minutes
+
+const keepAlive = () => {
+  const selfUrl = process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}/health`
+    : process.env.SELF_URL
+    ? `${process.env.SELF_URL}/health`
+    : null;
+
+  if (!selfUrl) return; // skip in local dev
+
+  setInterval(() => {
+    try {
+      const protocol = selfUrl.startsWith('https') ? require('https') : require('http');
+      const req = protocol.get(selfUrl, (res) => {
+        console.log(`🔄 Keep-alive ping → ${selfUrl} [${res.statusCode}]`);
+      });
+      req.on('error', () => {});
+      req.end();
+    } catch (_) {}
+  }, SELF_PING_INTERVAL_MS);
+
+  console.log(`⏰ Keep-alive pinger started → pinging every ${SELF_PING_INTERVAL_MS / 60000} min`);
+};
+
+setTimeout(keepAlive, 15000);
