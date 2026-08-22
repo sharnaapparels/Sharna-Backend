@@ -1,26 +1,132 @@
 const axios = require('axios');
 const nodemailer = require('nodemailer');
+const PDFDocument = require('pdfkit');
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_sharna_demo_key_984102';
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'SHARNA Luxury <orders@sharna.in>';
 const RESEND_BASE_URL = 'https://api.resend.com/emails';
 
 /**
+ * Generate a PDF Tax Invoice buffer using PDFKit
+ */
+const generateInvoicePdfBuffer = (orderDetails) => {
+  return new Promise((resolve) => {
+    try {
+      const doc = new PDFDocument({ margin: 36, size: 'A4' });
+      const buffers = [];
+      doc.on('data', b => buffers.push(b));
+      doc.on('end', () => resolve(Buffer.concat(buffers)));
+
+      // Dark Luxury Header Banner
+      doc.rect(0, 0, doc.page.width, 95).fill('#181412');
+      doc.fillColor('#C5A86B').fontSize(22).font('Helvetica-Bold').text('S H A R N A', 0, 28, { align: 'center', width: doc.page.width });
+      doc.fillColor('#FAF7F2').fontSize(8).font('Helvetica').text('HANDCRAFTED ETHNIC LUXURY  •  OFFICIAL TAX INVOICE', 0, 58, { align: 'center', width: doc.page.width });
+
+      // Invoice Details Block
+      doc.fillColor('#181412').fontSize(13).font('Helvetica-Bold').text(`TAX INVOICE #${orderDetails.orderId || 'ORDER-SUCCESS'}`, 40, 115);
+      doc.fillColor('#7A6960').fontSize(9).font('Helvetica').text(`Date: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}  |  Status: PAID`, 40, 133);
+
+      // Customer Info Block
+      doc.fillColor('#3D312A').fontSize(9.5).font('Helvetica-Bold').text('BILLED & SHIPPED TO:', 40, 160);
+      const rawName = orderDetails.shippingName || orderDetails.user?.name || 'Valued Customer';
+      const name = rawName.toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+      doc.fontSize(11).font('Helvetica-Bold').fillColor('#181412').text(name, 40, 175);
+      
+      const street = orderDetails.shippingStreet || '123 Luxury Avenue';
+      const city = orderDetails.shippingCity || 'Jabalpur';
+      const state = orderDetails.shippingState || 'Madhya Pradesh';
+      const pincode = orderDetails.shippingPostalCode || '482001';
+      const addressStr = `${street}, ${city}, ${state} - ${pincode}, ${orderDetails.shippingCountry || 'India'}`;
+      doc.fontSize(9).font('Helvetica').fillColor('#5C4E46').text(addressStr, 40, 190, { width: 500 });
+
+      // Table Header
+      let y = 230;
+      doc.rect(40, y, 515, 24).fill('#FAF4EB');
+      doc.fillColor('#181412').fontSize(8.5).font('Helvetica-Bold');
+      doc.text('GARMENT ITEM', 50, y + 7);
+      doc.text('VARIANT', 260, y + 7, { width: 100, align: 'center' });
+      doc.text('QTY', 360, y + 7, { width: 40, align: 'center' });
+      doc.text('PRICE', 410, y + 7, { width: 60, align: 'right' });
+      doc.text('TOTAL', 480, y + 7, { width: 65, align: 'right' });
+
+      y += 24;
+      doc.font('Helvetica').fontSize(9).fillColor('#2A221E');
+
+      const items = orderDetails.items || [];
+      items.forEach((item) => {
+        y += 8;
+        const itemTitle = (item.title || item.product?.title || 'Luxury Garment').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+        const sizeStr = (item.size || 'S').toUpperCase();
+        const colorStr = (item.color || 'Default').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+        const variantStr = `Size: ${sizeStr} | ${colorStr}`;
+        const qty = Number(item.quantity) || 1;
+        const price = Number(item.price) || 0;
+        const total = price * qty;
+
+        doc.text(itemTitle, 50, y, { width: 200 });
+        doc.text(variantStr, 260, y, { width: 100, align: 'center' });
+        doc.text(String(qty), 360, y, { width: 40, align: 'center' });
+        doc.text(`INR ${price.toLocaleString('en-IN')}`, 410, y, { width: 60, align: 'right' });
+        doc.text(`INR ${total.toLocaleString('en-IN')}`, 480, y, { width: 65, align: 'right' });
+
+        y += 22;
+        doc.moveTo(40, y).lineTo(555, y).strokeColor('#EAE1D5').stroke();
+      });
+
+      // Financial Totals
+      y += 15;
+      const totalAmount = Number(orderDetails.totalAmount || 0);
+      const shippingAmount = Number(orderDetails.shippingAmount || 0);
+      const subtotal = totalAmount - shippingAmount;
+
+      doc.fontSize(9).font('Helvetica').fillColor('#5C4E46');
+      doc.text('Subtotal:', 380, y);
+      doc.text(`INR ${subtotal.toLocaleString('en-IN')}`, 470, y, { align: 'right' });
+
+      y += 18;
+      doc.text('Express Shipping:', 380, y);
+      doc.text(shippingAmount === 0 ? 'COMPLIMENTARY' : `INR ${shippingAmount}`, 470, y, { align: 'right' });
+
+      y += 20;
+      doc.rect(365, y, 190, 28).fill('#181412');
+      doc.fillColor('#C5A86B').fontSize(10.5).font('Helvetica-Bold');
+      doc.text('TOTAL PAID:', 375, y + 8);
+      doc.text(`INR ${totalAmount.toLocaleString('en-IN')}`, 465, y + 8, { align: 'right', width: 80 });
+
+      // Symmetrical Footer
+      doc.fontSize(8).font('Helvetica').fillColor('#7A6960');
+      doc.text('SHARNA ETHNIC WEAR  •  Founded by Mrs. Chetna Kureel  •  Jabalpur, Madhya Pradesh', 40, doc.page.height - 40, { align: 'center', width: 515 });
+
+      doc.end();
+    } catch (e) {
+      console.warn('PDF Buffer generation notice:', e);
+      resolve(null);
+    }
+  });
+};
+
+/**
  * Send email using Resend API (with Nodemailer fallback if SMTP configured)
  */
-const sendResendEmail = async ({ to, subject, html, text }) => {
+const sendResendEmail = async ({ to, subject, html, text, attachments }) => {
+  const payload = {
+    from: RESEND_FROM_EMAIL,
+    to: Array.isArray(to) ? to : [to],
+    subject,
+    html,
+    text: text || 'Please view this email in an HTML-compatible email reader.'
+  };
+
+  if (attachments && attachments.length > 0) {
+    payload.attachments = attachments;
+  }
+
   // If RESEND_API_KEY is configured and valid, call Resend REST API
   if (process.env.RESEND_API_KEY && !process.env.RESEND_API_KEY.includes('demo')) {
     try {
       const response = await axios.post(
         RESEND_BASE_URL,
-        {
-          from: RESEND_FROM_EMAIL,
-          to: Array.isArray(to) ? to : [to],
-          subject,
-          html,
-          text: text || 'Please view this email in an HTML-compatible email reader.'
-        },
+        payload,
         {
           headers: {
             'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
@@ -35,18 +141,15 @@ const sendResendEmail = async ({ to, subject, html, text }) => {
       const errMsg = err.response?.data?.message || err.message;
       console.warn("⚠️ Resend API primary domain attempt warning:", errMsg);
 
-      // If domain is unverified on Resend free tier, retry with onboarding@resend.dev default testing domain
+      // Retry with testing domain if unverified
       if (errMsg.includes('domain') || errMsg.includes('verify') || err.response?.status === 403 || err.response?.status === 422) {
         try {
           console.log(`🔄 Retrying Resend with testing domain (onboarding@resend.dev)...`);
           const retryRes = await axios.post(
             RESEND_BASE_URL,
             {
-              from: 'SHARNA Luxury <onboarding@resend.dev>',
-              to: Array.isArray(to) ? to : [to],
-              subject,
-              html,
-              text: text || 'Please view this email in an HTML-compatible email reader.'
+              ...payload,
+              from: 'SHARNA Luxury <onboarding@resend.dev>'
             },
             {
               headers: {
@@ -81,7 +184,8 @@ const sendResendEmail = async ({ to, subject, html, text }) => {
         from: RESEND_FROM_EMAIL,
         to,
         subject,
-        html
+        html,
+        attachments
       });
       console.log(`✅ [SMTP Email Sent]: To ${to}`);
       return { success: true };
@@ -90,17 +194,15 @@ const sendResendEmail = async ({ to, subject, html, text }) => {
     }
   }
 
-  // Development simulation log
   console.log(`\n=================== [RESEND EMAIL SIMULATION] ===================`);
   console.log(`To: ${to}`);
-  console.log(`From: ${RESEND_FROM_EMAIL}`);
   console.log(`Subject: ${subject}`);
   console.log(`=================================================================\n`);
   return { success: true, simulated: true };
 };
 
 /**
- * Professional HTML Order Invoice Email Template
+ * Ultra-Responsive Luxury Order Invoice Email Template (White Card / Cream Background + Dark Header)
  */
 const sendEmailInvoice = async (email, orderDetails) => {
   if (!email) return;
@@ -113,139 +215,221 @@ const sendEmailInvoice = async (email, orderDetails) => {
     }).format(price || 0);
   };
 
-  const itemsHtml = (orderDetails.items || []).map(item => `
-    <tr>
-      <td style="padding: 14px 12px; border-bottom: 1px solid #FAF0E4; font-family: 'Helvetica Neue', Arial, sans-serif; color: #1e1915; font-size: 13.5px; font-weight: 600;">
-        ${item.title || 'Luxury Garment'}
-      </td>
-      <td style="padding: 14px 12px; border-bottom: 1px solid #FAF0E4; font-family: sans-serif; color: #7A6960; text-transform: uppercase; font-size: 12px; text-align: center;">
-        Size: <strong>${item.size || 'S'}</strong> | ${item.color || 'Default'}
-      </td>
-      <td style="padding: 14px 12px; text-align: center; border-bottom: 1px solid #FAF0E4; font-family: sans-serif; color: #7A6960; font-size: 13px;">
-        ${item.quantity}
-      </td>
-      <td style="padding: 14px 12px; text-align: right; border-bottom: 1px solid #FAF0E4; font-family: sans-serif; color: #7A6960; font-size: 13px;">
-        ${formatPrice(item.price)}
-      </td>
-      <td style="padding: 14px 12px; text-align: right; border-bottom: 1px solid #FAF0E4; font-family: sans-serif; color: #1e1915; font-weight: 700; font-size: 13.5px;">
-        ${formatPrice(item.price * item.quantity)}
-      </td>
-    </tr>
-  `).join('');
+  const capitalizeText = (str) => {
+    if (!str) return '';
+    return String(str)
+      .toLowerCase()
+      .trim()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  const formattedCustomerName = capitalizeText(orderDetails.shippingName || orderDetails.user?.name || 'Valued Customer');
+  const totalAmount = Number(orderDetails.totalAmount || 0);
+  const shippingAmount = Number(orderDetails.shippingAmount || 0);
+  const subtotal = totalAmount - shippingAmount;
+
+  const itemsRows = (orderDetails.items || []).map((item, index, arr) => {
+    const rawTitle = item.title || item.product?.title || 'Luxury Designer Garment';
+    const formattedTitle = capitalizeText(rawTitle);
+    const sizeStr = String(item.size || 'S').toUpperCase();
+    const colorStr = capitalizeText(item.color || 'Default');
+    const itemPrice = Number(item.price || 0);
+    const itemQty = Number(item.quantity || 1);
+    const itemImg = item.product?.images?.[0]?.url || item.image || 'https://sharna.in/src/assets/logo.png';
+    const isLast = index === arr.length - 1;
+
+    return `
+      <tr>
+        <td style="padding: 14px 0; ${isLast ? '' : 'border-bottom: 1px solid #FAF0E4;'}">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+            <tr>
+              <td width="58" valign="top" style="padding-right: 12px;">
+                <img src="${itemImg}" width="54" height="54" alt="${formattedTitle}" style="width: 54px; height: 54px; object-fit: cover; border-radius: 8px; border: 1px solid #EAE1D5; display: block;" />
+              </td>
+              <td valign="top" style="text-align: left;">
+                <div style="font-size: 14px; font-weight: 700; color: #1E1915; font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.35;">${formattedTitle}</div>
+                <div style="font-size: 12.5px; color: #5C4E46; margin-top: 4px; font-family: 'Helvetica Neue', Arial, sans-serif;">Size ${sizeStr} &nbsp;•&nbsp; ${colorStr}</div>
+                <div style="font-size: 12px; color: #7A6960; margin-top: 3px; font-family: 'Helvetica Neue', Arial, sans-serif;">
+                  Qty: ${itemQty} &nbsp;(${formatPrice(itemPrice)} each)
+                </div>
+              </td>
+              <td valign="top" align="right" style="white-space: nowrap; font-size: 14.5px; font-weight: 700; color: #1E1915; font-family: 'Helvetica Neue', Arial, sans-serif; padding-left: 10px;">
+                ${formatPrice(itemPrice * itemQty)}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `;
+  }).join('');
 
   const trackingBlock = orderDetails.awbCode ? `
-    <div style="background-color: #FAF4EB; border: 1.5px solid #c5a86b; border-radius: 8px; padding: 16px; margin: 20px 0; text-align: center;">
-      <span style="font-size: 11px; font-weight: 700; color: #A67E39; letter-spacing: 0.1em; text-transform: uppercase; display: block; margin-bottom: 4px;">AUTOMATED SHIPROCKET DISPATCH</span>
-      <div style="font-size: 14px; font-weight: 700; color: #1e1915;">Courier: ${orderDetails.courierName || 'Delhivery Express Air'}</div>
-      <div style="font-size: 13px; color: #5C4E46; margin-top: 2px;">AWB Tracking Code: <strong>${orderDetails.awbCode}</strong></div>
+    <div style="background-color: #FAF4EB; border-left: 4px solid #C5A86B; border-radius: 8px; padding: 16px; margin-bottom: 22px; text-align: left;">
+      <span style="font-size: 10px; font-weight: 700; color: #A67E39; letter-spacing: 0.14em; text-transform: uppercase; display: block; margin-bottom: 4px;">AUTOMATED SHIPROCKET DISPATCH</span>
+      <div style="font-size: 13.5px; font-weight: 700; color: #1E1915;">Courier: ${orderDetails.courierName || 'Delhivery Express Air'}</div>
+      <div style="font-size: 12.5px; color: #5C4E46; margin-top: 2px;">AWB Tracking Code: <strong style="color: #1E1915;">${orderDetails.awbCode}</strong></div>
       ${orderDetails.trackingUrl ? `
-        <a href="${orderDetails.trackingUrl}" target="_blank" style="display: inline-block; margin-top: 10px; padding: 8px 18px; background-color: #1e1915; color: #FAF7F2; text-decoration: none; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em;">TRACK SHIPMENT ON SHIPROCKET →</a>
+        <a href="${orderDetails.trackingUrl}" target="_blank" style="display: inline-block; margin-top: 10px; padding: 8px 18px; background: #181412; color: #C5A86B; text-decoration: none; border-radius: 20px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">TRACK SHIPMENT ON SHIPROCKET →</a>
       ` : ''}
     </div>
   ` : '';
 
   const htmlContent = `
     <!DOCTYPE html>
-    <html>
+    <html lang="en">
     <head>
       <meta charset="utf-8">
-      <title>SHARNA Tax Invoice</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="color-scheme" content="only light">
+      <meta name="supported-color-schemes" content="only light">
+      <title>SHARNA Tax Invoice #${orderDetails.orderId}</title>
+      <style>
+        :root {
+          color-scheme: only light;
+          supported-color-schemes: only light;
+        }
+        u + .body .email-card {
+          background-color: #ffffff !important;
+          background: #ffffff linear-gradient(0deg, #ffffff 0%, #ffffff 100%) !important;
+        }
+        u + .body .email-bg {
+          background-color: #faf7f2 !important;
+          background: #faf7f2 linear-gradient(0deg, #faf7f2 0%, #faf7f2 100%) !important;
+        }
+      </style>
     </head>
-    <body style="margin: 0; padding: 0; background-color: #FAF7F2; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+    <body class="body" style="margin: 0; padding: 0; background-color: #FAF7F2; background: #FAF7F2 linear-gradient(0deg, #FAF7F2 0%, #FAF7F2 100%); font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #1E1915;">
       
-      <div style="max-width: 620px; margin: 30px auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #EAE1D5; overflow: hidden; box-shadow: 0 15px 40px rgba(30,25,21,0.06);">
-        
-        <!-- Header Banner -->
-        <div style="background-color: #1e1915; padding: 35px 25px; text-align: center; border-bottom: 3px solid #c5a86b;">
-          <h1 style="color: #ffffff; font-family: 'Cinzel', Georgia, serif; margin: 0; letter-spacing: 0.25em; font-size: 30px; text-transform: uppercase; font-weight: 400;">SHARNA</h1>
-          <p style="font-size: 10px; color: #c5a86b; margin: 8px 0 0 0; text-transform: uppercase; letter-spacing: 0.2em;">REDEFINING ETHNIC FASHION WITH ELEGANCE • JABALPUR</p>
-        </div>
-
-        <div style="padding: 35px 30px;">
-          
-          <!-- Order Confirmation Title -->
-          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #FAF0E4; padding-bottom: 18px; margin-bottom: 25px;">
-            <div>
-              <span style="font-size: 10px; font-weight: 700; color: #155724; background-color: #D4EDDA; padding: 4px 10px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.05em;">
-                OFFICIAL TAX INVOICE ✓
-              </span>
-              <h2 style="color: #1e1915; font-family: Georgia, serif; font-size: 20px; margin: 10px 0 0 0; font-weight: 400;">Thank You For Shopping!</h2>
-            </div>
-            <div style="text-align: right;">
-              <div style="font-size: 14px; font-weight: 700; color: #1e1915;">#${orderDetails.orderId}</div>
-              <div style="font-size: 11px; color: #7A6960; margin-top: 2px;">Payment: <strong>PAID</strong></div>
-            </div>
-          </div>
-
-          <p style="font-size: 14px; color: #5C4E46; line-height: 1.6; margin-bottom: 20px;">
-            Dear <strong>${orderDetails.shippingName || 'Valued Customer'}</strong>,<br>
-            Your order has been verified and confirmed at our Jabalpur warehouse. Below is the official itemized tax invoice for your purchase.
-          </p>
-
-          ${trackingBlock}
-
-          <!-- Items Table -->
-          <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-            <thead>
-              <tr style="background-color: #FAF4EB; border-bottom: 1.5px solid #EAE1D5;">
-                <th style="padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; color: #1e1915; letter-spacing: 0.05em;">Garment</th>
-                <th style="padding: 10px 12px; text-align: center; font-size: 11px; text-transform: uppercase; color: #1e1915; letter-spacing: 0.05em;">Variant</th>
-                <th style="padding: 10px 12px; text-align: center; font-size: 11px; text-transform: uppercase; color: #1e1915; letter-spacing: 0.05em;">Qty</th>
-                <th style="padding: 10px 12px; text-align: right; font-size: 11px; text-transform: uppercase; color: #1e1915; letter-spacing: 0.05em;">Price</th>
-                <th style="padding: 10px 12px; text-align: right; font-size: 11px; text-transform: uppercase; color: #1e1915; letter-spacing: 0.05em;">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${itemsHtml}
-            </tbody>
-          </table>
-
-          <!-- Financial Breakdown -->
-          <div style="margin-top: 25px; display: flex; justify-content: flex-end;">
-            <table style="width: 250px; border-collapse: collapse; font-size: 13px; color: #5C4E46;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="email-bg" style="background-color: #FAF7F2; background: #FAF7F2 linear-gradient(0deg, #FAF7F2 0%, #FAF7F2 100%); padding: 20px 10px 40px 10px; width: 100%;">
+        <tr>
+          <td align="center">
+            
+            <!-- MAIN CONTAINER CARD (Max 500px - Perfect Mobile & Desktop Fit) -->
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="email-card" style="max-width: 500px; background-color: #FFFFFF; background: #FFFFFF linear-gradient(0deg, #FFFFFF 0%, #FFFFFF 100%); border-radius: 16px; border: 1px solid #EAE1D5; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
+              
+              <!-- DARK CHARCOAL BRAND HEADER BANNER (ONLY DARK SECTION) -->
               <tr>
-                <td style="padding: 4px 0;">Subtotal:</td>
-                <td style="padding: 4px 0; text-align: right; color: #1e1915; font-weight: 600;">${formatPrice(orderDetails.totalAmount - (orderDetails.shippingAmount || 0))}</td>
+                <td align="center" style="background-color: #181412; background: #181412 linear-gradient(0deg, #181412 0%, #181412 100%); padding: 38px 20px 34px; border-bottom: 3px solid #C5A86B;">
+                  <div style="color: #C5A86B !important; font-size: 14px; margin-bottom: 6px; letter-spacing: 0.3em;">❖</div>
+                  <h1 style="color: #C5A86B !important; font-family: Georgia, serif; margin: 0; letter-spacing: 0.28em; font-size: 32px; text-transform: uppercase; font-weight: 500; text-shadow: 0 2px 8px rgba(0,0,0,0.5);">SHARNA</h1>
+                  <div style="width: 40px; height: 1px; background-color: #C5A86B; margin: 10px auto 8px;"></div>
+                  <p style="font-size: 9.5px; color: #C5A86B !important; margin: 0; text-transform: uppercase; letter-spacing: 0.24em; font-family: 'Helvetica Neue', Arial, sans-serif; font-weight: 600; opacity: 0.95;">HANDCRAFTED ETHNIC LUXURY</p>
+                </td>
               </tr>
+
+              <!-- WHITE CARD CONTENT AREA -->
               <tr>
-                <td style="padding: 4px 0;">Express Shipping:</td>
-                <td style="padding: 4px 0; text-align: right; color: #155724; font-weight: 600;">${orderDetails.shippingAmount === 0 ? 'Complimentary' : formatPrice(orderDetails.shippingAmount)}</td>
-              </tr>
-              <tr style="border-top: 2px solid #1e1915; font-size: 16px; font-weight: 700; color: #1e1915;">
-                <td style="padding: 10px 0 0 0;">Total Paid:</td>
-                <td style="padding: 10px 0 0 0; text-align: right; color: #A67E39;">${formatPrice(orderDetails.totalAmount)}</td>
+                <td class="email-card" style="padding: 30px 24px; background-color: #FFFFFF; background: #FFFFFF linear-gradient(0deg, #FFFFFF 0%, #FFFFFF 100%); text-align: left;">
+                  
+                  <!-- OFFICIAL TAX INVOICE BADGE & META -->
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin-bottom: 18px;">
+                    <tr>
+                      <td align="center">
+                        <span style="font-size: 10px; font-weight: 700; color: #FFFFFF !important; background-color: #0E9F6E; padding: 5px 14px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.06em; display: inline-block; margin-bottom: 10px;">
+                          OFFICIAL TAX INVOICE ✓
+                        </span>
+                        <div style="font-size: 14px; font-weight: 700; color: #1E1915 !important; font-family: 'Helvetica Neue', Arial, sans-serif;">Invoice Number: #${orderDetails.orderId}</div>
+                        <div style="font-size: 11.5px; color: #7A6960 !important; margin-top: 4px; font-family: 'Helvetica Neue', Arial, sans-serif;">Date: ${new Date().toLocaleDateString('en-IN', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <div style="border-bottom: 1px solid #EAE1D5; margin-bottom: 22px;"></div>
+
+                  <!-- GREETING -->
+                  <div style="margin-bottom: 22px;">
+                    <div style="font-size: 16px; font-weight: 700; color: #1E1915 !important;">Hello, ${formattedCustomerName}.</div>
+                    <div style="font-size: 13.5px; color: #5C4E46 !important; margin-top: 4px; line-height: 1.5;">Thank you for shopping with SHARNA. Your order details and receipt summary are provided below.</div>
+                  </div>
+
+                  <!-- DOWNLOAD PDF TAX INVOICE BUTTON -->
+                  <div style="background-color: #FAF4EB; background: #FAF4EB linear-gradient(0deg, #FAF4EB 0%, #FAF4EB 100%); border: 1px solid #E5D5C3; border-radius: 12px; padding: 14px 18px; margin-bottom: 24px; text-align: center;">
+                    <div style="font-size: 12px; color: #5C4E46 !important; font-weight: 500; margin-bottom: 10px; line-height: 1.4;">
+                      Need a formal printable PDF receipt for your records?
+                    </div>
+                    <a href="${process.env.SELF_URL || 'https://sharna-backend-production.up.railway.app'}/api/orders/${orderDetails.orderId}/invoice.pdf" target="_blank" style="display: inline-block; padding: 10px 24px; background-color: #181412; background: #181412 linear-gradient(0deg, #181412 0%, #181412 100%); color: #C5A86B !important; text-decoration: none; border-radius: 20px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">
+                      📥 DOWNLOAD TAX INVOICE PDF
+                    </a>
+                  </div>
+
+                  ${trackingBlock}
+
+                  <!-- ITEMS LIST -->
+                  <div style="margin-bottom: 10px;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: #A67E39 !important; font-weight: 700; margin-bottom: 12px;">ORDERED GARMENTS</div>
+                    <table width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse;">
+                      <tbody>
+                        ${itemsRows}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div style="border-bottom: 1px solid #EAE1D5; margin: 20px 0;"></div>
+
+                  <!-- FINANCIAL BREAKDOWN -->
+                  <table width="100%" cellspacing="0" cellpadding="0" border="0" style="font-size: 13.5px; color: #5C4E46 !important; margin-bottom: 22px;">
+                    <tr>
+                      <td align="left" style="padding: 5px 0;">Subtotal</td>
+                      <td align="right" style="padding: 5px 0; color: #1E1915 !important; font-weight: 600;">${formatPrice(subtotal)}</td>
+                    </tr>
+                    <tr>
+                      <td align="left" style="padding: 5px 0;">GST Tax (18% Included)</td>
+                      <td align="right" style="padding: 5px 0; color: #0E9F6E !important; font-weight: 600;">Included</td>
+                    </tr>
+                    <tr>
+                      <td align="left" style="padding: 5px 0;">Express Shipping</td>
+                      <td align="right" style="padding: 5px 0; color: #0E9F6E !important; font-weight: 600;">Complimentary</td>
+                    </tr>
+                    <tr style="border-top: 1.5px solid #1E1915;">
+                      <td align="left" style="padding: 14px 0 0 0; font-size: 15.5px; font-weight: 700; color: #1E1915 !important;">Total Paid</td>
+                      <td align="right" style="padding: 14px 0 0 0;">
+                        <div style="font-size: 20px; font-weight: 700; color: #C5A86B !important;">${formatPrice(totalAmount)}</div>
+                        <div style="font-size: 10.5px; color: #7A6960 !important; margin-top: 2px;">Paid via Online Payment</div>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <div style="border-bottom: 1px solid #EAE1D5; margin-bottom: 22px;"></div>
+
+                  <!-- DELIVERY DESTINATION CARD -->
+                  <div style="background-color: #FAF7F2; background: #FAF7F2 linear-gradient(0deg, #FAF7F2 0%, #FAF7F2 100%); border: 1px solid #EAE1D5; border-radius: 12px; padding: 18px; margin-bottom: 26px;">
+                    <div style="font-size: 10px; font-weight: 700; color: #A67E39 !important; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 6px;">DELIVERY DESTINATION</div>
+                    <div style="font-size: 14px; color: #1E1915 !important; font-weight: 700;">${formattedCustomerName}</div>
+                    <div style="font-size: 12.5px; color: #5C4E46 !important; margin-top: 4px; line-height: 1.55;">
+                      ${orderDetails.shippingStreet || ''}<br>
+                      ${orderDetails.shippingCity || ''}, ${orderDetails.shippingState || ''} - ${orderDetails.shippingPostalCode || ''}, ${orderDetails.shippingCountry || 'India'}
+                    </div>
+                  </div>
+
+                  <!-- VIEW ORDER IN PROFILE CTA -->
+                  <a href="https://sharna.in/orders" target="_blank" style="display: block; width: 100%; text-align: center; padding: 15px 0; background-color: #181412; background: #181412 linear-gradient(0deg, #181412 0%, #181412 100%); color: #C5A86B !important; border-radius: 25px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none; box-sizing: border-box; box-shadow: 0 6px 18px rgba(24,20,18,0.15);">
+                    VIEW ORDER IN PROFILE &gt;
+                  </a>
+
+                </td>
               </tr>
             </table>
-          </div>
 
-          <!-- Shipping Destination -->
-          <div style="margin-top: 30px; padding: 20px; background-color: #FAF4EB; border-radius: 10px; border: 1px solid #EAE1D5;">
-            <span style="font-size: 10px; font-weight: 700; color: #A67E39; text-transform: uppercase; letter-spacing: 0.1em; display: block; margin-bottom: 6px;">DELIVERY DESTINATION</span>
-            <div style="font-size: 13.5px; color: #1e1915; font-weight: 600;">${orderDetails.shippingName}</div>
-            <div style="font-size: 12.5px; color: #5C4E46; margin-top: 4px; line-height: 1.5;">
-              ${orderDetails.shippingStreet}<br>
-              ${orderDetails.shippingCity}, ${orderDetails.shippingState} - ${orderDetails.shippingPostalCode}<br>
-              ${orderDetails.shippingCountry || 'India'}
-            </div>
-          </div>
+            <!-- FOOTER EMBLEM & LINKS -->
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 500px; margin-top: 28px; text-align: center;">
+              <tr>
+                <td align="center" style="font-size: 11px; color: #7A6960;">
+                  <div style="margin-bottom: 10px;">
+                    <span style="font-family: Georgia, serif; font-size: 15px; font-weight: 700; color: #181412; border: 1.5px solid #181412; padding: 3px 8px; border-radius: 50%;">S</span>
+                  </div>
+                  <p style="margin: 0; line-height: 1.6;">
+                    Return Policy &nbsp;•&nbsp; Track Order &nbsp;•&nbsp; Contact Support
+                  </p>
+                  <p style="margin: 6px 0 0 0; color: #999999;">© SHARNA 2026</p>
+                </td>
+              </tr>
+            </table>
 
-          <!-- Direct Account CTA -->
-          <div style="text-align: center; margin-top: 35px;">
-            <a href="https://sharna.com/orders" target="_blank" style="display: inline-block; padding: 14px 32px; background-color: #1e1915; color: #FAF7F2; text-decoration: none; border-radius: 25px; font-size: 12px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; box-shadow: 0 4px 15px rgba(30,25,21,0.15);">
-              VIEW ORDER IN PROFILE →
-            </a>
-          </div>
-
-        </div>
-
-        <!-- Footer -->
-        <div style="background-color: #FAF7F2; padding: 25px; text-align: center; border-top: 1px solid #EAE1D5; font-size: 11px; color: #7A6960; line-height: 1.6;">
-          <p style="margin: 0; font-weight: 600; color: #1e1915;">SHARNA ETHNIC WEAR</p>
-          <p style="margin: 4px 0 0 0;">Founded by Mrs. Chetna Kureel • Jabalpur, Madhya Pradesh, India</p>
-          <p style="margin: 8px 0 0 0; color: #999;">Need assistance? Contact sharnaapparels@gmail.com or WhatsApp +91 62682 18135</p>
-        </div>
-
-      </div>
+          </td>
+        </tr>
+      </table>
 
     </body>
     </html>
@@ -253,7 +437,7 @@ const sendEmailInvoice = async (email, orderDetails) => {
 
   return sendResendEmail({
     to: email,
-    subject: `Order Confirmed #${orderDetails.orderId} - SHARNA Tax Invoice`,
+    subject: `Official Tax Invoice #${orderDetails.orderId} — SHARNA Luxury`,
     html: htmlContent
   });
 };
