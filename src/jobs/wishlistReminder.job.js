@@ -98,17 +98,12 @@ const runAbandonedWishlistScan = async () => {
  * Initialize background scheduler (runs every 4 days)
  */
 const initWishlistReminderJob = () => {
-  console.log('⏰ Wishlist Abandonment Scheduler activated (Scan interval: Every 24 hours, Cooldown threshold: 3-4 days)');
+  console.log('⏰ Wishlist Abandonment Scheduler activated (Scan interval: Every 3-4 days)');
   
-  // Run initial scan 10 seconds after server startup
-  setTimeout(() => {
-    runAbandonedWishlistScan();
-  }, 10000);
-
-  // Periodic scan every 24 hours to check for eligible users
+  // Periodic scan every 3-4 days (3.5 days = 302,400,000 ms)
   setInterval(() => {
     runAbandonedWishlistScan();
-  }, 24 * 60 * 60 * 1000);
+  }, 3.5 * 24 * 60 * 60 * 1000);
 };
 
 module.exports = { initWishlistReminderJob, runAbandonedWishlistScan };

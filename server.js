@@ -44,27 +44,59 @@ app.use(cors({
     try {
       const url = new URL(origin);
       const hostname = url.hostname;
-      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      if (
+        hostname === 'localhost' || 
+        hostname === '127.0.0.1' ||
+        hostname.endsWith('.local') ||
+        /^192\.168\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+        /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname) ||
+        /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(hostname)
+      ) {
         return callback(null, true);
       }
     } catch (e) {}
 
-    // Block all unauthorized external origins
+    // Allow in non-production environments
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+
     return callback(new Error('CORS Security Block: Access from unauthorized external origin denied.'));
   },
   credentials: true
 }));
 
-// Rate limiting
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
+// Rate limiting with JSON response and local/review exemptions
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5000,
+  skip: (req) => {
+    return (
+      process.env.NODE_ENV !== 'production' ||
+      req.ip === '127.0.0.1' ||
+      req.ip === '::1' ||
+      req.ip === '::ffff:127.0.0.1' ||
+      req.originalUrl.includes('/reviews')
+    );
+  },
+  handler: (req, res) => {
+    res.status(429).json({
+      success: false,
+      message: 'Too many requests from this IP, please try again after 15 minutes.'
+    });
+  }
+});
 app.use(limiter);
 
 const cookieParser = require('cookie-parser');
 
-// Body parsing — 25mb limit to support high-resolution admin product images
-app.use(express.json({ limit: '25mb' }));
-app.use(express.urlencoded({ extended: true, limit: '25mb' }));
+// Body parsing — 50mb limit to support high-resolution customer review photos & admin assets
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
+
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 // Disable ETag globally — prevents 304 "Not Modified" on all API routes
 app.set('etag', false);
@@ -81,8 +113,12 @@ app.use('/api/admin', noCacheMiddleware);
 app.use('/api/cms', noCacheMiddleware);
 app.use('/api/products', noCacheMiddleware);
 
-// Logging
-if (process.env.NODE_ENV !== 'production') app.use(morgan('dev'));
+// Logging (completely mutes GET request logging in development terminal)
+if (process.env.NODE_ENV !== 'production') {
+  app.use(morgan('dev', {
+    skip: (req) => req.method === 'GET'
+  }));
+}
 
 const { seedCatalogIfNeeded } = require('./src/config/seedCatalog');
 
@@ -183,9 +219,8 @@ const startServer = async () => {
 startServer();
 
 // ── KEEP-ALIVE SELF-PING ─────────────────────────────────────────────────────
-// Prevents Railway server from sleeping, which causes 10-15s cold start delays
-// when users visit the site after any period of inactivity.
-const SELF_PING_INTERVAL_MS = 10 * 60 * 1000; // every 10 minutes
+// Ping server health once every 3 to 4 days (3.5 days)
+const SELF_PING_INTERVAL_MS = 3.5 * 24 * 60 * 60 * 1000; // every 3-4 days
 
 const keepAlive = () => {
   const selfUrl = process.env.RAILWAY_PUBLIC_DOMAIN
@@ -207,7 +242,7 @@ const keepAlive = () => {
     } catch (_) {}
   }, SELF_PING_INTERVAL_MS);
 
-  console.log(`⏰ Keep-alive pinger started → pinging every ${SELF_PING_INTERVAL_MS / 60000} min`);
+  console.log('⏰ Keep-alive pinger started → pinging every 3 to 4 days');
 };
 
 setTimeout(keepAlive, 15000);

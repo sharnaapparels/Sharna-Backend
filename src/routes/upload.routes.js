@@ -1,60 +1,91 @@
 const express = require('express');
 const router = express.Router();
-const { upload } = require('../config/cloudinary');
-const { protect, adminOnly } = require('../middleware/auth.middleware');
+const path = require('path');
+const fs = require('fs');
+const { cloudinary, upload, uploadsDir } = require('../config/cloudinary');
+const { protect, adminOnly, optionalAuth } = require('../middleware/auth.middleware');
+
+const uploadFileToCloudinaryOrDisk = async (req, file, folderName = 'sharna_uploads') => {
+  if (!file || !file.buffer) return null;
+
+  // 1. Try Cloudinary upload via data URI
+  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
+    try {
+      const b64 = Buffer.from(file.buffer).toString('base64');
+      const dataURI = `data:${file.mimetype};base64,${b64}`;
+      const res = await cloudinary.uploader.upload(dataURI, {
+        folder: folderName
+      });
+      if (res && res.secure_url) {
+        return res.secure_url;
+      }
+    } catch (cErr) {
+      console.warn('Cloudinary upload fallback to local disk:', cErr.message);
+    }
+  }
+
+  // 2. Fallback to local disk storage
+  const filename = `${folderName}-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname) || '.png'}`;
+  const filePath = path.join(uploadsDir, filename);
+  fs.writeFileSync(filePath, file.buffer);
+
+  const protocol = req.protocol || 'http';
+  const host = req.get('host') || 'localhost:5008';
+  return `${protocol}://${host}/uploads/${filename}`;
+};
 
 // Upload single image (Admin only)
 // POST /api/upload/single
-router.post('/single', protect, adminOnly, upload.single('image'), (req, res) => {
+router.post('/single', protect, adminOnly, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
     
-    // req.file contains: path (Cloudinary URL), filename (Cloudinary public_id)
+    const fileUrl = await uploadFileToCloudinaryOrDisk(req, req.file, 'sharna_products');
     res.json({
       success: true,
       message: 'Image uploaded successfully',
-      url: req.file.path,
-      publicId: req.file.filename
+      url: fileUrl
     });
   } catch (error) {
+    console.error('Single Upload Error:', error.message);
     res.status(500).json({ success: false, message: 'Upload failed', error: error.message });
   }
 });
 
-// Upload customer review image (Authenticated Users only)
+// Upload customer review image (Supports Logged In & Guest Reviewers)
 // POST /api/upload/review
-router.post('/review', protect, upload.single('image'), (req, res) => {
+router.post('/review', optionalAuth, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
     
+    const fileUrl = await uploadFileToCloudinaryOrDisk(req, req.file, 'sharna_reviews');
     res.json({
       success: true,
       message: 'Review image uploaded successfully',
-      url: req.file.path,
-      publicId: req.file.filename
+      url: fileUrl
     });
   } catch (error) {
-    console.error('Upload Error:', error);
+    console.error('Review Upload Error:', error.message);
     res.status(500).json({ success: false, message: 'Upload failed', error: error.message });
   }
 });
 
 // Upload multiple images (Admin only) (up to 5)
 // POST /api/upload/multiple
-router.post('/multiple', protect, adminOnly, upload.array('images', 5), (req, res) => {
+router.post('/multiple', protect, adminOnly, upload.array('images', 5), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ success: false, message: 'No files uploaded' });
     }
 
-    const uploadedImages = req.files.map(file => ({
-      url: file.path,
-      publicId: file.filename
-    }));
+    const uploadPromises = req.files.map(file => uploadFileToCloudinaryOrDisk(req, file, 'sharna_products'));
+    const urls = await Promise.all(uploadPromises);
+
+    const uploadedImages = urls.map(url => ({ url }));
 
     res.json({
       success: true,
@@ -62,6 +93,7 @@ router.post('/multiple', protect, adminOnly, upload.array('images', 5), (req, re
       images: uploadedImages
     });
   } catch (error) {
+    console.error('Multiple Upload Error:', error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 });

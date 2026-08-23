@@ -218,11 +218,12 @@ const triggerInvoiceNotifications = async (orderId) => {
           shippedAt: new Date().toISOString()
         });
 
-        // Automatically set status to SHIPPED in database
+        // Set status to CONFIRMED in database (Dispatched status is set exclusively by Admin)
         await prisma.order.update({
           where: { id: orderWithDetails.id },
           data: {
-            status: 'SHIPPED',
+            status: 'CONFIRMED',
+            paymentStatus: 'PAID',
             notes: updatedNotes
           }
         });
