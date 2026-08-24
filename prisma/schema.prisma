@@ -103,6 +103,8 @@ model ProductImage {
 
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
 }
 
 model ProductVariant {
@@ -115,6 +117,8 @@ model ProductVariant {
 
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
 }
 
 // ─────────────────────────────────────────────
@@ -234,6 +238,7 @@ model Review {
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
+  @@index([productId])
   @@unique([userId, productId])
 }
 

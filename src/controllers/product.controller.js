@@ -29,7 +29,20 @@ exports.getAllProducts = async (req, res) => {
   try {
     const products = await prisma.product.findMany({
       where,
-      include: { images: true, variants: true },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        price: true,
+        salePrice: true,
+        category: true,
+        collection: true,
+        isPublished: true,
+        isFeatured: true,
+        createdAt: true,
+        images: { select: { id: true, url: true, isPrimary: true } },
+        variants: { select: { id: true, size: true, color: true, stock: true } }
+      },
       take: parseInt(limit),
       orderBy: { createdAt: 'desc' }
     });
