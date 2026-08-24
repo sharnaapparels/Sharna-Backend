@@ -47,7 +47,17 @@ exports.getAllProducts = async (req, res) => {
       orderBy: { createdAt: 'desc' }
     });
 
-    const result = { success: true, products, total: products.length, page: 1, pages: 1 };
+    const sanitizedProducts = products.map(p => ({
+      ...p,
+      images: (p.images || []).map(img => ({
+        ...img,
+        url: typeof img.url === 'string' && img.url.startsWith('data:image')
+          ? 'https://res.cloudinary.com/dph921x1w/image/upload/v1724500000/sharna-fallback.jpg'
+          : img.url
+      }))
+    }));
+
+    const result = { success: true, products: sanitizedProducts, total: sanitizedProducts.length, page: 1, pages: 1 };
     setCache(cacheKey, result);
     if (isGenericFetch) setCache('all_products_catalog', result);
 

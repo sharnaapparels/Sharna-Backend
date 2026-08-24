@@ -216,9 +216,26 @@ exports.getHomepageCMS = async (req, res) => {
       readyToShip: (config.readyToShipProductIds || []).map(id => prodMap[String(id)]).filter(Boolean)
     };
 
+    // Sanitize any residual Base64 strings from config
+    const sanitizeUrl = (url) => (typeof url === 'string' && url.startsWith('data:image')) ? 'https://res.cloudinary.com/dph921x1w/image/upload/v1724500000/sharna-fallback.jpg' : url;
+
+    const sanitizedConfig = {
+      ...config,
+      heroSlides: (config.heroSlides || []).map(s => ({
+        ...s,
+        imageUrl: sanitizeUrl(s.imageUrl || s.desktopImageUrl),
+        desktopImageUrl: sanitizeUrl(s.desktopImageUrl || s.imageUrl),
+        mobileImageUrl: sanitizeUrl(s.mobileImageUrl)
+      })),
+      testimonials: (config.testimonials || []).map(t => ({
+        ...t,
+        image: sanitizeUrl(t.image)
+      }))
+    };
+
     const responseData = {
       success: true,
-      cms: config,
+      cms: sanitizedConfig,
       populatedProducts
     };
 
