@@ -41,6 +41,10 @@ exports.getAllProducts = async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error("Fetch products error:", err.message);
+    const staleCache = getCache('all_products_catalog') || getCache('/api/products');
+    if (staleCache) {
+      return res.json(staleCache);
+    }
     res.status(500).json({ success: false, message: 'Failed to retrieve products' });
   }
 };
