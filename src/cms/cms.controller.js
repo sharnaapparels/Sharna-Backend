@@ -142,8 +142,21 @@ const getCMSConfig = async () => {
   }
 };
 
+let cmsResponseCache = null;
+let cmsCacheTime = 0;
+
+const clearCMSCache = () => {
+  cmsResponseCache = null;
+  cmsCacheTime = 0;
+};
+
 // GET /api/cms/homepage
 exports.getHomepageCMS = async (req, res) => {
+  // Serve from in-memory cache if less than 15 seconds old
+  if (cmsResponseCache && (Date.now() - cmsCacheTime < 15000)) {
+    return res.json(cmsResponseCache);
+  }
+
   try {
     const config = await getCMSConfig();
 
@@ -203,11 +216,16 @@ exports.getHomepageCMS = async (req, res) => {
       readyToShip: (config.readyToShipProductIds || []).map(id => prodMap[String(id)]).filter(Boolean)
     };
 
-    res.json({
+    const responseData = {
       success: true,
       cms: config,
       populatedProducts
-    });
+    };
+
+    cmsResponseCache = responseData;
+    cmsCacheTime = Date.now();
+
+    res.json(responseData);
   } catch (err) {
     console.error("Fetch Homepage CMS error:", err);
     res.status(500).json({ success: false, message: "Failed to retrieve homepage CMS settings" });
@@ -217,6 +235,7 @@ exports.getHomepageCMS = async (req, res) => {
 // PUT /api/cms/homepage
 exports.updateHomepageCMS = async (req, res) => {
   try {
+    clearCMSCache();
     const { heroSlides, newArrivalsProductIds, celebrityClosetProductIds, bestSellersProductIds, readyToShipProductIds, testimonials, ethnicCategories } = req.body;
 
     const currentConfig = await getCMSConfig();

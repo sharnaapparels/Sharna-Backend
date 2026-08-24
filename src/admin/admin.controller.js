@@ -463,14 +463,11 @@ exports.deleteOrder = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Delete order related items and shipments first
+    // Delete order items first to satisfy foreign key constraints
     await prisma.orderItem.deleteMany({ where: { orderId: id } }).catch(() => {});
-    await prisma.shipment.deleteMany({ where: { orderId: id } }).catch(() => {});
 
-    const order = await prisma.order.findUnique({ where: { id } });
-    if (order) {
-      await prisma.order.delete({ where: { id } });
-    }
+    // Delete order record
+    await prisma.order.deleteMany({ where: { id } });
 
     console.log(`✅ [ORDER DELETED]: Order ID ${id}`);
     return res.json({ success: true, message: 'Order deleted successfully' });
