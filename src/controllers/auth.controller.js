@@ -526,3 +526,121 @@ exports.saveAddress = async (req, res) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+
+// ─── SEND RESET PASSWORD OTP ────────────────────────────────────────────────
+// POST /api/auth/send-reset-otp OR POST /api/auth/forgot-password
+exports.sendResetOtp = async (req, res) => {
+  try {
+    const identifier = req.body.identifier || req.body.phone || req.body.email;
+
+    if (!identifier || !identifier.trim()) {
+      return res.status(400).json({ success: false, message: 'Email or WhatsApp phone number is required' });
+    }
+
+    const user = await findUserByIdentifier(identifier);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'No registered account found with this Email or Phone number.' });
+    }
+
+    if (user.isBlocked) {
+      return res.status(401).json({ success: false, message: 'Account is blocked. Please contact customer support.' });
+    }
+
+    const otp = generateOTP();
+    const hashedOtp = await bcrypt.hash(otp, 10);
+    const otpExpires = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { otp: hashedOtp, otpExpires, otpPurpose: 'PASSWORD_RESET' }
+    });
+
+    console.log(`\n=============================================`);
+    console.log(`[RESET PASSWORD OTP] Code for ${user.email || user.phone}: ${otp}`);
+    console.log(`=============================================\n`);
+
+    const isEmail = identifier.includes('@');
+    let sendMethod = 'WhatsApp';
+
+    if (isEmail && user.email) {
+      sendMethod = 'Email';
+      try {
+        const { sendPasswordResetEmail } = require('../utils/email.service');
+        await sendPasswordResetEmail(user.email, otp);
+      } catch (e) {
+        console.warn('Password reset email dispatch error:', e.message);
+      }
+    } else {
+      try {
+        await sendWhatsAppOTPText(user.phone || identifier, otp);
+      } catch (e) {
+        console.warn('Password reset WhatsApp dispatch error:', e.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `A 6-digit reset code has been sent to your ${sendMethod}.`
+    });
+  } catch (err) {
+    console.error("Send reset OTP error:", err);
+    res.status(500).json({ success: false, message: 'Failed to send reset OTP. Please try again.' });
+  }
+};
+
+// ─── RESET PASSWORD (VERIFY OTP & UPDATE PASSWORD) ──────────────────────────
+// POST /api/auth/reset-password
+exports.resetPassword = async (req, res) => {
+  try {
+    const { identifier, phone, email, otp, newPassword } = req.body;
+    const targetId = identifier || phone || email;
+
+    if (!targetId || !otp || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Identifier, OTP code, and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 6 characters long' });
+    }
+
+    const user = await findUserByIdentifier(targetId);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User account not found' });
+    }
+
+    if (!user.otp || !user.otpExpires) {
+      return res.status(400).json({ success: false, message: 'No reset OTP requested. Please request a reset code first.' });
+    }
+
+    if (new Date() > user.otpExpires) {
+      return res.status(400).json({ success: false, message: 'Reset code has expired. Please request a new OTP.' });
+    }
+
+    const isMatch = await bcrypt.compare(otp, user.otp);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Invalid OTP code entered. Please check and try again.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        otp: null,
+        otpExpires: null,
+        otpPurpose: null
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Your password has been updated successfully! You can now sign in with your new password.'
+    });
+  } catch (err) {
+    console.error("Reset password error:", err);
+    res.status(500).json({ success: false, message: 'Failed to reset password. Please try again.' });
+  }
+};

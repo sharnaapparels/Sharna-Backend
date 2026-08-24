@@ -30,7 +30,9 @@
   ],
   "newArrivalsProductIds": [
     "cmt0hjmw20000vsm8huvbrryv",
-    "cmt71n3ze0000vs2okv99zlph"
+    "cmt71n3ze0000vs2okv99zlph",
+    "cmt72xrvp0000pd014vcdeyzm",
+    "cmt79bxnc0000vsv8bc9avcis"
   ],
   "celebrityClosetProductIds": [
     "cmt0h3qgk0022vsacp4gnor1s",
@@ -40,7 +42,9 @@
   "bestSellersProductIds": [
     "cmt0h3qgk0022vsacp4gnor1s",
     "cmt0h3q6g001yvsac1mo5r3qo",
-    "cmt0h3pw5001uvsacl0cjl4n7"
+    "cmt0h3pw5001uvsacl0cjl4n7",
+    "cmt72xrvp0000pd014vcdeyzm",
+    "cmt79bxnc0000vsv8bc9avcis"
   ],
   "readyToShipProductIds": [
     "cmt0hjmw20000vsm8huvbrryv",
@@ -74,7 +78,7 @@
       "isVerified": true
     }
   ],
-  "updatedAt": "2026-08-24T09:38:43.846Z",
+  "updatedAt": "2026-08-24T14:49:18.958Z",
   "ethnicCategories": [
     {
       "id": "cat-1",

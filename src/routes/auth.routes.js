@@ -70,6 +70,11 @@ router.post('/resend-otp', otpSendLimiter, [
   body('phone').notEmpty().withMessage('Phone number is required')
 ], authController.resendOtp);
 
+// ─── Forgot / Reset Password Routes ──────────────────────────────────────────
+router.post('/send-reset-otp', otpSendLimiter, authController.sendResetOtp);
+router.post('/forgot-password', otpSendLimiter, authController.sendResetOtp);
+router.post('/reset-password', otpVerifyLimiter, authController.resetPassword);
+
 // ─── Refresh Token & Logout (HTTP-Only Secure Cookie Architecture) ───────────
 router.post('/refresh', authController.refresh);
 router.post('/logout', authController.logout);

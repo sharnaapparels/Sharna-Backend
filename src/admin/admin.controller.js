@@ -1,5 +1,6 @@
 const prisma = require('../config/database');
 const { clearProductCache } = require('../utils/productCache');
+const { clearCMSCache } = require('../cms/cms.controller');
 
 // GET /api/admin/stats
 exports.getDashboardStats = async (req, res) => {
@@ -227,14 +228,56 @@ exports.createShipment = async (req, res) => {
   }
 };
 
+const saveProductVariants = async (productId, colors, sizes, stockVal) => {
+  try {
+    const colorList = Array.isArray(colors) && colors.length > 0 ? colors : ['Beige'];
+    const sizeList = Array.isArray(sizes) && sizes.length > 0 ? sizes : ['XS', 'S', 'M', 'L', 'XL', '2XL'];
+    const stock = stockVal !== undefined ? parseInt(stockVal) : 50;
+
+    await prisma.productVariant.deleteMany({ where: { productId } });
+
+    const variants = [];
+    for (const c of colorList) {
+      for (const sz of sizeList) {
+        variants.push({
+          productId,
+          color: c,
+          size: sz,
+          stock
+        });
+      }
+    }
+
+    if (variants.length > 0) {
+      await prisma.productVariant.createMany({ data: variants });
+    }
+  } catch (err) {
+    console.warn("Save variants warning:", err.message);
+  }
+};
+
 // GET /api/admin/products
 exports.getAllProducts = async (req, res) => {
   try {
     const products = await prisma.product.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { images: true }
+      include: { images: true, variants: true }
     });
-    res.json({ success: true, products });
+
+    const mapped = products.map(p => {
+      const dbColors = [...new Set((p.variants || []).map(v => v.color).filter(Boolean))];
+      const dbSizes = [...new Set((p.variants || []).map(v => v.size).filter(Boolean))];
+      const mainColor = dbColors[0] || 'Beige';
+
+      return {
+        ...p,
+        color: mainColor,
+        colors: dbColors.length > 0 ? dbColors : ['Beige'],
+        sizes: dbSizes.length > 0 ? dbSizes : ['XS', 'S', 'M', 'L', 'XL', '2XL']
+      };
+    });
+
+    res.json({ success: true, products: mapped });
   } catch (err) {
     console.error("Fetch admin products failed:", err);
     res.status(500).json({ success: false, message: 'Failed to retrieve products list' });
@@ -276,7 +319,9 @@ exports.createProduct = async (req, res) => {
     });
 
     console.log(`✅ [PRODUCT CREATED IN DB]: ${product.title} (ID: ${product.id})`);
+    await saveProductVariants(product.id, colors, sizes, stock);
     clearProductCache();
+    if (clearCMSCache) clearCMSCache();
 
     const { colorImages } = req.body;
 
@@ -286,8 +331,8 @@ exports.createProduct = async (req, res) => {
         ...product,
         isNewArrival: isNewArrival || computedCollection === 'new-arrivals',
         isReadyToShip: isReadyToShip || computedCollection === 'ready-to-ship',
-        color: color || (colors && colors[0]) || 'Pink',
-        colors: Array.isArray(colors) ? colors : (color ? [color] : ['Pink']),
+        color: color || (Array.isArray(colors) && colors[0]) || 'Beige',
+        colors: Array.isArray(colors) && colors.length > 0 ? colors : (color ? [color] : ['Beige']),
         colorImages: colorImages || {},
         sizes: Array.isArray(sizes) ? sizes : ['XS', 'S', 'M', 'L', 'XL'],
         stock: stock ? parseInt(stock) : 50
@@ -302,7 +347,7 @@ exports.createProduct = async (req, res) => {
 // PUT /api/admin/products/:id
 exports.updateProduct = async (req, res) => {
   const { id } = req.params;
-  const { title, description, price, originalPrice, category, collection, isNewArrival, isReadyToShip, isFeatured, stock, color, colors, images } = req.body;
+  const { title, description, price, originalPrice, category, collection, isNewArrival, isReadyToShip, isFeatured, stock, color, colors, sizes, images } = req.body;
 
   try {
     const computedCollection = collection || (isNewArrival !== undefined ? (isNewArrival ? 'new-arrivals' : 'festive-collection') : (isReadyToShip ? 'ready-to-ship' : undefined));
@@ -316,6 +361,18 @@ exports.updateProduct = async (req, res) => {
     if (computedCollection !== undefined) updateData.collection = computedCollection;
     if (isFeatured !== undefined) updateData.isFeatured = isFeatured;
     updateData.isPublished = true; // Always publish when saving from admin panel
+
+    if (Array.isArray(images) && images.length > 0) {
+      const formattedImages = images.map((img, idx) => {
+        const imageUrl = typeof img === 'string' ? img : (img.url || img.src || '');
+        return { url: imageUrl, isPrimary: idx === 0 };
+      }).filter(i => i.url);
+
+      if (formattedImages.length > 0) {
+        await prisma.productImage.deleteMany({ where: { productId: id } }).catch(() => {});
+        updateData.images = { create: formattedImages };
+      }
+    }
 
     // Check if product exists in DB first
     const existing = await prisma.product.findUnique({ where: { id } });
@@ -353,7 +410,9 @@ exports.updateProduct = async (req, res) => {
     }
 
     console.log(`✅ [PRODUCT SAVED TO DB]: ${product.title} (ID: ${product.id})`);
+    await saveProductVariants(product.id, colors, sizes, stock);
     clearProductCache();
+    if (clearCMSCache) clearCMSCache();
 
     const { colorImages } = req.body;
 
@@ -363,8 +422,8 @@ exports.updateProduct = async (req, res) => {
         ...product,
         isNewArrival: isNewArrival !== undefined ? isNewArrival : product.collection === 'new-arrivals',
         isReadyToShip: isReadyToShip !== undefined ? isReadyToShip : product.collection === 'ready-to-ship',
-        color: color || (colors && colors[0]) || 'Pink',
-        colors: Array.isArray(colors) ? colors : (color ? [color] : ['Pink']),
+        color: color || (Array.isArray(colors) && colors[0]) || 'Beige',
+        colors: Array.isArray(colors) && colors.length > 0 ? colors : (color ? [color] : ['Beige']),
         colorImages: colorImages || {},
         stock: stock !== undefined ? parseInt(stock) : 50
       }
