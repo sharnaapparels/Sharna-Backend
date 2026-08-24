@@ -150,6 +150,10 @@ const clearCMSCache = () => {
   cmsCacheTime = 0;
 };
 
+// Lightweight in-memory testimonials cache
+let testimonialsCache = null;
+let testimonialsCacheTime = 0;
+
 // GET /api/cms/homepage
 exports.getHomepageCMS = async (req, res) => {
   // Serve from in-memory cache if less than 15 seconds old
@@ -246,6 +250,50 @@ exports.getHomepageCMS = async (req, res) => {
   } catch (err) {
     console.error("Fetch Homepage CMS error:", err);
     res.status(500).json({ success: false, message: "Failed to retrieve homepage CMS settings" });
+  }
+};
+
+// GET /api/cms/testimonials?placement=product
+exports.getTestimonials = async (req, res) => {
+  const placement = req.query.placement || null;
+  const cacheKey = `testimonials_${placement || 'all'}`;
+
+  // Serve from 60s in-memory cache
+  if (testimonialsCache && testimonialsCache[cacheKey] && (Date.now() - testimonialsCacheTime < 60000)) {
+    return res.json(testimonialsCache[cacheKey]);
+  }
+
+  try {
+    const config = await getCMSConfig();
+    let testimonials = config.testimonials || [];
+
+    if (placement) {
+      testimonials = testimonials.filter(t => t.placement === placement || t.placement === 'both');
+    }
+
+    // Return only the fields PDP uses — no hero slides, no product IDs, no banner config
+    const slim = testimonials.map(t => ({
+      id: t.id,
+      quote: t.quote,
+      name: t.name,
+      location: t.location,
+      rating: t.rating || 5,
+      isVerified: t.isVerified !== false,
+      image: t.image || null,
+      placement: t.placement
+    }));
+
+    const result = { success: true, testimonials: slim };
+
+    if (!testimonialsCache) testimonialsCache = {};
+    testimonialsCache[cacheKey] = result;
+    testimonialsCacheTime = Date.now();
+
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
+    res.json(result);
+  } catch (err) {
+    console.error('Fetch testimonials error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to retrieve testimonials' });
   }
 };
 

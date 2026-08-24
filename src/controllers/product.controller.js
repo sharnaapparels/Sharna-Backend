@@ -74,18 +74,26 @@ exports.getAllProducts = async (req, res) => {
 
 // GET /api/products/:slug (matches slug or id)
 exports.getProductBySlug = async (req, res) => {
-  const { slug: identifier } = req.params;
+  const t0 = Date.now();
+  // Normalize identifier: lowercase + trim so slug/ID case variants share the same cache key
+  const identifier = String(req.params.slug || '').toLowerCase().trim();
   const cacheKey = `/api/products/${identifier}`;
+
   const cachedData = getCache(cacheKey);
   if (cachedData) {
+    console.log(`[PDP] cache HIT for "${identifier}" — served in ${Date.now() - t0}ms`);
     return res.json(cachedData);
   }
+
+  console.log(`[PDP] cache MISS for "${identifier}"`);
+  const tDb = Date.now();
 
   try {
     const product = await prisma.product.findFirst({
       where: {
         OR: [
           { id: identifier },
+          { id: req.params.slug }, // preserve original casing for ID lookup
           { slug: identifier }
         ]
       },
@@ -96,12 +104,19 @@ exports.getProductBySlug = async (req, res) => {
       }
     });
 
+    const tDbEnd = Date.now();
+    console.log(`[PDP] DB query: ${tDbEnd - tDb}ms`);
+
     if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+
+    const tSer = Date.now();
     const result = { success: true, product };
     setCache(cacheKey, result);
+    console.log(`[PDP] serialization+cache: ${Date.now() - tSer}ms | total: ${Date.now() - t0}ms`);
+
     res.json(result);
   } catch (err) {
-    console.error("Fetch product failed:", err.message);
+    console.error(`[PDP] Fetch product failed (${Date.now() - t0}ms):`, err.message);
     res.status(500).json({ success: false, message: 'Failed to retrieve product' });
   }
 };
