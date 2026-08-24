@@ -4,17 +4,17 @@ const { getCache, setCache, clearProductCache } = require('../utils/productCache
 
 // GET /api/products
 exports.getAllProducts = async (req, res) => {
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
+  res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
 
-  const cacheKey = req.originalUrl || '/api/products';
+  const { category, collection, search, minPrice, maxPrice, page = 1, limit = 50 } = req.query;
+
+  const isGenericFetch = !category && !collection && !search && !minPrice && !maxPrice;
+  const cacheKey = isGenericFetch ? 'all_products_catalog' : (req.originalUrl || '/api/products');
+
   const cachedData = getCache(cacheKey);
   if (cachedData) {
     return res.json(cachedData);
   }
-
-  const { category, collection, search, minPrice, maxPrice, page = 1, limit = 50 } = req.query;
 
   const where = { isPublished: true };
   if (category) where.category = category;
@@ -27,19 +27,17 @@ exports.getAllProducts = async (req, res) => {
   }
 
   try {
-    const [products, total] = await Promise.all([
-      prisma.product.findMany({
-        where,
-        include: { images: true, variants: true, reviews: { select: { rating: true } } },
-        skip: (page - 1) * limit,
-        take: parseInt(limit),
-        orderBy: { createdAt: 'desc' }
-      }),
-      prisma.product.count({ where })
-    ]);
+    const products = await prisma.product.findMany({
+      where,
+      include: { images: true, variants: true },
+      take: parseInt(limit),
+      orderBy: { createdAt: 'desc' }
+    });
 
-    const result = { success: true, products, total, page: parseInt(page), pages: Math.ceil(total / limit) };
+    const result = { success: true, products, total: products.length, page: 1, pages: 1 };
     setCache(cacheKey, result);
+    if (isGenericFetch) setCache('all_products_catalog', result);
+
     res.json(result);
   } catch (err) {
     console.error("Fetch products error:", err.message);

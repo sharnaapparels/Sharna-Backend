@@ -111,7 +111,6 @@ const noCacheMiddleware = (req, res, next) => {
 };
 app.use('/api/admin', noCacheMiddleware);
 app.use('/api/cms', noCacheMiddleware);
-app.use('/api/products', noCacheMiddleware);
 
 // Logging (completely mutes GET request logging in development terminal)
 if (process.env.NODE_ENV !== 'production') {
