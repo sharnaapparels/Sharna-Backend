@@ -60,7 +60,7 @@ exports.getDashboardStats = async (req, res) => {
       prisma.product.findMany({
         take: 6,
         orderBy: { createdAt: 'desc' },
-        include: { variants: true }
+        include: { images: true, variants: true }
       })
     ]);
 

@@ -7,7 +7,8 @@
       "linkPath": "/collections",
       "buttonText": "DISCOVER COLLECTION",
       "imageUrl": "/src/assets/hero-slide-1.png",
-      "mobileImageUrl": "/src/assets/hero-mobile-1.png"
+      "mobileImageUrl": "/src/assets/hero-mobile-1.png",
+      "desktopImageUrl": "/src/assets/hero-slide-1.png"
     },
     {
       "id": "slide-2",
@@ -16,7 +17,8 @@
       "linkPath": "/ready-to-ship",
       "buttonText": "SHOP READY TO SHIP",
       "imageUrl": "/src/assets/hero-slide-2.png",
-      "mobileImageUrl": "/src/assets/hero-mobile-2.png"
+      "mobileImageUrl": "/src/assets/hero-mobile-2.png",
+      "desktopImageUrl": "/src/assets/hero-slide-2.png"
     },
     {
       "id": "slide-3",
@@ -25,7 +27,8 @@
       "linkPath": "/collections",
       "buttonText": "EXPLORE CELEBRITY LOOKS",
       "imageUrl": "/src/assets/hero-slide-3.png",
-      "mobileImageUrl": "/src/assets/hero-mobile-3.png"
+      "mobileImageUrl": "/src/assets/hero-mobile-3.png",
+      "desktopImageUrl": "/src/assets/hero-slide-3.png"
     }
   ],
   "newArrivalsProductIds": [
@@ -43,8 +46,7 @@
     "cmt0h3qgk0022vsacp4gnor1s",
     "cmt0h3q6g001yvsac1mo5r3qo",
     "cmt0h3pw5001uvsacl0cjl4n7",
-    "cmt72xrvp0000pd014vcdeyzm",
-    "cmt79bxnc0000vsv8bc9avcis"
+    "cmt72xrvp0000pd014vcdeyzm"
   ],
   "readyToShipProductIds": [
     "cmt0hjmw20000vsm8huvbrryv",
@@ -78,13 +80,13 @@
       "isVerified": true
     }
   ],
-  "updatedAt": "2026-08-24T14:49:18.958Z",
+  "updatedAt": "2026-08-25T18:29:07.539Z",
   "ethnicCategories": [
     {
       "id": "cat-1",
       "name": "SUIT SETS",
       "tag": "Anarkalis & Salwars",
-      "image": "/src/assets/reception-2.png",
+      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787658311/sharna_products/sxeopgxcfbdev4pbj6w4.jpg",
       "link": "/shop?category=suit-sets"
     },
     {
