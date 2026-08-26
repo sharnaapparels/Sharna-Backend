@@ -241,7 +241,7 @@ exports.getHomepageCMS = async (req, res) => {
     };
 
     // Sanitize any residual Base64 strings from config
-    const sanitizeUrl = (url) => (typeof url === 'string' && url.startsWith('data:image')) ? 'https://res.cloudinary.com/dph921x1w/image/upload/v1724500000/sharna-fallback.jpg' : url;
+    const sanitizeUrl = (url) => (typeof url === 'string' && url.startsWith('data:image')) ? '' : url;
 
     const sanitizedConfig = {
       ...config,
@@ -413,7 +413,7 @@ exports.getCollectionsCMS = async (req, res) => {
       title: col.title || col.name || 'Collection',
       subtitle: col.subtitle || '',
       image: (typeof col.image === 'string' && col.image.startsWith('data:image'))
-        ? 'https://res.cloudinary.com/dph921x1w/image/upload/v1724500000/sharna-fallback.jpg'
+        ? ''
         : (col.image || col.img || '/src/assets/reception-2.png'),
       route: col.route || col.path || '/collections',
       isActive: col.isActive !== false,

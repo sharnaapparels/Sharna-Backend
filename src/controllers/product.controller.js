@@ -98,7 +98,7 @@ exports.getAllProducts = async (req, res) => {
       images: (p.images || []).map(img => ({
         ...img,
         url: typeof img.url === 'string' && img.url.startsWith('data:image')
-          ? 'https://res.cloudinary.com/dph921x1w/image/upload/v1724500000/sharna-fallback.jpg'
+          ? ''
           : img.url
       }))
     }));
