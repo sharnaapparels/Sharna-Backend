@@ -4,6 +4,7 @@ const { getCache, setCache, clearProductCache } = require('../utils/productCache
 
 // GET /api/products
 exports.getAllProducts = async (req, res) => {
+  const t0 = Date.now();
   res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
 
   const { category, collection, search, minPrice, maxPrice, page = 1, limit = 50 } = req.query;
@@ -27,6 +28,7 @@ exports.getAllProducts = async (req, res) => {
   }
 
   try {
+    const tDb = Date.now();
     const products = await prisma.product.findMany({
       where,
       select: {
@@ -46,6 +48,7 @@ exports.getAllProducts = async (req, res) => {
       take: parseInt(limit),
       orderBy: { createdAt: 'desc' }
     });
+    const tDbEnd = Date.now();
 
     const sanitizedProducts = products.map(p => ({
       ...p,
@@ -61,6 +64,7 @@ exports.getAllProducts = async (req, res) => {
     setCache(cacheKey, result);
     if (isGenericFetch) setCache('all_products_catalog', result);
 
+    console.log(`[PERF] /api/products | DB query: ${tDbEnd - tDb}ms | total: ${Date.now() - t0}ms`);
     res.json(result);
   } catch (err) {
     console.error("Fetch products error:", err.message);
@@ -72,51 +76,113 @@ exports.getAllProducts = async (req, res) => {
   }
 };
 
-// GET /api/products/:slug (matches slug or id)
+// Lean PDP Projection — only retrieves required columns to minimize Supabase egress
+const PDP_PRODUCT_SELECT = {
+  id: true,
+  title: true,
+  slug: true,
+  description: true,
+  price: true,
+  salePrice: true,
+  category: true,
+  collection: true,
+  fabric: true,
+  care: true,
+  isPublished: true,
+  isFeatured: true,
+  createdAt: true,
+  updatedAt: true,
+  images: {
+    select: { id: true, url: true, isPrimary: true }
+  },
+  variants: {
+    select: { id: true, size: true, color: true, colorHex: true, stock: true, sku: true }
+  },
+  reviews: {
+    where: { isVisible: true },
+    select: {
+      id: true,
+      rating: true,
+      title: true,
+      body: true,
+      imageUrl: true,
+      createdAt: true,
+      user: { select: { name: true } }
+    },
+    orderBy: { createdAt: 'desc' }
+  }
+};
+
+// GET /api/products/:slug (matches slug or id using optimized direct unique indexes)
 exports.getProductBySlug = async (req, res) => {
   const t0 = Date.now();
-  // Normalize identifier: lowercase + trim so slug/ID case variants share the same cache key
-  const identifier = String(req.params.slug || '').toLowerCase().trim();
-  const cacheKey = `/api/products/${identifier}`;
+  const rawParam = String(req.params.slug || '').trim();
+  const lowerParam = rawParam.toLowerCase();
 
-  const cachedData = getCache(cacheKey);
+  // 1. Check in-memory cache for fast hit (supports both slug and ID keys)
+  const cachedData = getCache(`/api/products/${lowerParam}`) || getCache(`/api/products/${rawParam}`);
   if (cachedData) {
-    console.log(`[PDP] cache HIT for "${identifier}" — served in ${Date.now() - t0}ms`);
+    console.log(`[PERF] /api/products/:slug | cache: HIT | total: ${Date.now() - t0}ms`);
     return res.json(cachedData);
   }
 
-  console.log(`[PDP] cache MISS for "${identifier}"`);
   const tDb = Date.now();
-
   try {
-    const product = await prisma.product.findFirst({
-      where: {
-        OR: [
-          { id: identifier },
-          { id: req.params.slug }, // preserve original casing for ID lookup
-          { slug: identifier }
-        ]
-      },
-      include: {
-        images: true,
-        variants: true,
-        reviews: { include: { user: { select: { name: true } } } }
-      }
-    });
+    let product = null;
+    const isCuidLike = /^c[a-z0-9]{20,}$/i.test(rawParam);
+
+    // 2. Optimized single-index lookup: use primary key index for CUID IDs, unique index for slugs
+    if (isCuidLike) {
+      product = await prisma.product.findUnique({
+        where: { id: rawParam },
+        select: PDP_PRODUCT_SELECT
+      });
+    }
+
+    if (!product) {
+      // Direct indexed seek on Product.slug unique constraint
+      product = await prisma.product.findUnique({
+        where: { slug: lowerParam },
+        select: PDP_PRODUCT_SELECT
+      });
+    }
+
+    if (!product && !isCuidLike) {
+      // Fallback: check Product.id in case identifier was a non-CUID formatted ID
+      product = await prisma.product.findUnique({
+        where: { id: rawParam },
+        select: PDP_PRODUCT_SELECT
+      }).catch(() => null);
+    }
 
     const tDbEnd = Date.now();
-    console.log(`[PDP] DB query: ${tDbEnd - tDb}ms`);
 
-    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found' });
+    }
 
     const tSer = Date.now();
     const result = { success: true, product };
-    setCache(cacheKey, result);
-    console.log(`[PDP] serialization+cache: ${Date.now() - tSer}ms | total: ${Date.now() - t0}ms`);
+
+    // 3. Bidirectional caching: store by both slug and ID so either route hits memory
+    setCache(`/api/products/${lowerParam}`, result);
+    if (rawParam !== lowerParam) {
+      setCache(`/api/products/${rawParam}`, result);
+    }
+    if (product.id) {
+      setCache(`/api/products/${product.id}`, result);
+      setCache(`/api/products/${product.id.toLowerCase()}`, result);
+    }
+    if (product.slug) {
+      setCache(`/api/products/${product.slug.toLowerCase()}`, result);
+    }
+
+    const tSerEnd = Date.now();
+    console.log(`[PERF] /api/products/:slug | DB query: ${tDbEnd - tDb}ms | serialization: ${tSerEnd - tSer}ms | total: ${Date.now() - t0}ms`);
 
     res.json(result);
   } catch (err) {
-    console.error(`[PDP] Fetch product failed (${Date.now() - t0}ms):`, err.message);
+    console.error(`[PERF] /api/products/:slug ERROR (${Date.now() - t0}ms):`, err.message);
     res.status(500).json({ success: false, message: 'Failed to retrieve product' });
   }
 };

@@ -91,39 +91,47 @@ const getCMSConfig = async () => {
       config = JSON.parse(raw);
     }
 
-    // Auto-seed product IDs if any array is empty
+    // Auto-seed product IDs ONLY if any array is empty
     let needsSave = false;
-    let dbProducts = [];
-    try {
-      dbProducts = await prisma.product.findMany({
-        select: { id: true, category: true, collection: true, isFeatured: true }
-      });
-    } catch (e) {
-      console.warn("CMS DB Query Warning:", e.message);
-    }
+    const hasMissingIds = (!config.newArrivalsProductIds || config.newArrivalsProductIds.length === 0) ||
+                          (!config.celebrityClosetProductIds || config.celebrityClosetProductIds.length === 0) ||
+                          (!config.bestSellersProductIds || config.bestSellersProductIds.length === 0) ||
+                          (!config.readyToShipProductIds || config.readyToShipProductIds.length === 0);
 
-    if (!config.newArrivalsProductIds || config.newArrivalsProductIds.length === 0) {
-      const ids = dbProducts.filter(p => p.collection === 'new-arrivals' || p.category === 'new-arrivals').map(p => p.id);
-      config.newArrivalsProductIds = ids.length > 0 ? ids.slice(0, 6) : ['na1', 'na2', 'na3', 'na4'];
-      needsSave = true;
-    }
+    if (hasMissingIds) {
+      let dbProducts = [];
+      try {
+        dbProducts = await prisma.product.findMany({
+          where: { isPublished: true },
+          select: { id: true, category: true, collection: true, isFeatured: true }
+        });
+      } catch (e) {
+        console.warn("CMS DB Query Warning:", e.message);
+      }
 
-    if (!config.celebrityClosetProductIds || config.celebrityClosetProductIds.length === 0) {
-      const ids = dbProducts.filter(p => p.collection === 'celebrity-closet' || p.category === 'Celebrity Closet').map(p => p.id);
-      config.celebrityClosetProductIds = ids.length > 0 ? ids.slice(0, 6) : ['c1', 'c2', 'c3', 'c4'];
-      needsSave = true;
-    }
+      if (!config.newArrivalsProductIds || config.newArrivalsProductIds.length === 0) {
+        const ids = dbProducts.filter(p => p.collection === 'new-arrivals' || p.category === 'new-arrivals').map(p => p.id);
+        config.newArrivalsProductIds = ids.length > 0 ? ids.slice(0, 6) : ['na1', 'na2', 'na3', 'na4'];
+        needsSave = true;
+      }
 
-    if (!config.bestSellersProductIds || config.bestSellersProductIds.length === 0) {
-      const ids = dbProducts.filter(p => p.isFeatured || p.category === 'Best Sellers').map(p => p.id);
-      config.bestSellersProductIds = ids.length > 0 ? ids.slice(0, 6) : ['bs1', 'bs2', 'bs3', 'bs4'];
-      needsSave = true;
-    }
+      if (!config.celebrityClosetProductIds || config.celebrityClosetProductIds.length === 0) {
+        const ids = dbProducts.filter(p => p.collection === 'celebrity-closet' || p.category === 'Celebrity Closet').map(p => p.id);
+        config.celebrityClosetProductIds = ids.length > 0 ? ids.slice(0, 6) : ['c1', 'c2', 'c3', 'c4'];
+        needsSave = true;
+      }
 
-    if (!config.readyToShipProductIds || config.readyToShipProductIds.length === 0) {
-      const ids = dbProducts.filter(p => p.collection === 'ready-to-ship' || p.category === 'ready-to-ship').map(p => p.id);
-      config.readyToShipProductIds = ids.length > 0 ? ids.slice(0, 6) : ['s1', 's2', 's3', 's4'];
-      needsSave = true;
+      if (!config.bestSellersProductIds || config.bestSellersProductIds.length === 0) {
+        const ids = dbProducts.filter(p => p.isFeatured || p.category === 'Best Sellers').map(p => p.id);
+        config.bestSellersProductIds = ids.length > 0 ? ids.slice(0, 6) : ['bs1', 'bs2', 'bs3', 'bs4'];
+        needsSave = true;
+      }
+
+      if (!config.readyToShipProductIds || config.readyToShipProductIds.length === 0) {
+        const ids = dbProducts.filter(p => p.collection === 'ready-to-ship' || p.category === 'ready-to-ship').map(p => p.id);
+        config.readyToShipProductIds = ids.length > 0 ? ids.slice(0, 6) : ['s1', 's2', 's3', 's4'];
+        needsSave = true;
+      }
     }
 
     if (!config.ethnicCategories || config.ethnicCategories.length === 0) {
@@ -144,6 +152,7 @@ const getCMSConfig = async () => {
 
 let cmsResponseCache = null;
 let cmsCacheTime = 0;
+const CMS_CACHE_TTL_MS = 60 * 1000; // 60 seconds (cleared immediately upon admin edit)
 
 const clearCMSCache = () => {
   cmsResponseCache = null;
@@ -156,8 +165,8 @@ let testimonialsCacheTime = 0;
 
 // GET /api/cms/homepage
 exports.getHomepageCMS = async (req, res) => {
-  // Serve from in-memory cache if less than 15 seconds old
-  if (cmsResponseCache && (Date.now() - cmsCacheTime < 15000)) {
+  // Serve from in-memory cache if fresh (cleared on admin updates)
+  if (cmsResponseCache && (Date.now() - cmsCacheTime < CMS_CACHE_TTL_MS)) {
     return res.json(cmsResponseCache);
   }
 
@@ -185,7 +194,18 @@ exports.getHomepageCMS = async (req, res) => {
       try {
         const dbProducts = await prisma.product.findMany({
           where: { id: { in: dbLikeIds } },
-          include: { images: true, variants: true }
+          select: {
+            id: true,
+            title: true,
+            price: true,
+            salePrice: true,
+            category: true,
+            collection: true,
+            isPublished: true,
+            isFeatured: true,
+            images: { select: { id: true, url: true, isPrimary: true } },
+            variants: { select: { id: true, size: true, color: true, stock: true } }
+          }
         });
         dbProducts.forEach(p => {
           prodMap[String(p.id)] = {
@@ -202,8 +222,8 @@ exports.getHomepageCMS = async (req, res) => {
             colors: [...new Set((p.variants || []).map(v => v.color).filter(Boolean))],
             sizes: [...new Set((p.variants || []).map(v => v.size).filter(Boolean))],
             inStock: p.isPublished !== false,
-            isNewArrival: p.isNewArrival,
-            isReadyToShip: p.isReadyToShip,
+            isNewArrival: p.collection === 'new-arrivals',
+            isReadyToShip: p.collection === 'ready-to-ship',
             isFeatured: p.isFeatured
           };
         });

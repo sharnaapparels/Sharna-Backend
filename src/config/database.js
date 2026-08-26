@@ -2,27 +2,34 @@ require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 
 let dbUrl = process.env.DATABASE_URL || '';
-if (dbUrl && !dbUrl.includes('pool_timeout=')) {
-  dbUrl += (dbUrl.includes('?') ? '&' : '?') + 'pool_timeout=30&connection_limit=30';
+
+// If connection_limit is not explicitly provided in DATABASE_URL, set conservative defaults for Supabase transaction pooler (port 6543)
+if (dbUrl) {
+  const urlObj = new URL(dbUrl);
+  if (!urlObj.searchParams.has('connection_limit')) {
+    urlObj.searchParams.set('connection_limit', '10');
+  }
+  if (!urlObj.searchParams.has('pool_timeout')) {
+    urlObj.searchParams.set('pool_timeout', '30');
+  }
+  dbUrl = urlObj.toString();
 }
 
-const prisma = new PrismaClient({
+const prismaOptions = {
   datasources: dbUrl ? { db: { url: dbUrl } } : undefined,
   log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
-});
+};
 
-// ⚡ Supabase PostgreSQL Connection Pool Keep-Alive Ping (Runs every 45s to keep pooler connection warm)
-setInterval(async () => {
-  try {
-    await prisma.$queryRaw`SELECT 1;`;
-  } catch (err) {
-    // If Supabase connection dropped or timed out, reconnect silently
-    console.log('🔄 [Supabase DB Reconnecting...]');
-    try {
-      await prisma.$connect();
-    } catch (e) {}
+// Singleton PrismaClient instance to prevent multiple connection pools
+let prisma;
+if (process.env.NODE_ENV === 'production') {
+  prisma = new PrismaClient(prismaOptions);
+} else {
+  if (!global.__prisma) {
+    global.__prisma = new PrismaClient(prismaOptions);
   }
-}, 45 * 1000);
+  prisma = global.__prisma;
+}
 
 process.on('beforeExit', async () => {
   await prisma.$disconnect();

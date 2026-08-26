@@ -4,7 +4,19 @@ const prisma = require('../config/database');
 exports.getCart = async (req, res) => {
   const cart = await prisma.cartItem.findMany({
     where: { userId: req.user.id },
-    include: { product: { include: { images: true } } }
+    include: {
+      product: {
+        select: {
+          id: true,
+          title: true,
+          price: true,
+          salePrice: true,
+          category: true,
+          collection: true,
+          images: { select: { id: true, url: true, isPrimary: true } }
+        }
+      }
+    }
   });
   res.json({ success: true, cart });
 };

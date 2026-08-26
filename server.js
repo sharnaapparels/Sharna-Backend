@@ -23,6 +23,9 @@ const { notFound, errorHandler } = require('./src/middleware/errorHandler');
 
 const app = express();
 
+// Trust reverse proxy (Railway / Vercel load balancers)
+app.set('trust proxy', 1);
+
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));

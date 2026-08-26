@@ -1,11 +1,21 @@
 const prisma = require('../config/database');
 
+const WISHLIST_PRODUCT_SELECT = {
+  id: true,
+  title: true,
+  price: true,
+  salePrice: true,
+  category: true,
+  collection: true,
+  images: { select: { id: true, url: true, isPrimary: true } }
+};
+
 // GET /api/wishlist
 exports.getWishlist = async (req, res) => {
   try {
     const wishlistRecords = await prisma.wishlist.findMany({
       where: { userId: req.user.id },
-      include: { product: { include: { images: true } } }
+      include: { product: { select: WISHLIST_PRODUCT_SELECT } }
     });
     const wishlist = wishlistRecords
       .filter(w => w.product)
@@ -14,7 +24,7 @@ exports.getWishlist = async (req, res) => {
         id: w.product.id,
         title: w.product.title,
         price: w.product.price,
-        image: w.product.images?.[0]?.url || w.product.image || '',
+        image: w.product.images?.[0]?.url || '',
         images: w.product.images
       }));
     res.json({ success: true, wishlist });
@@ -101,7 +111,7 @@ exports.syncWishlist = async (req, res) => {
 
     const updatedWishlistRecords = await prisma.wishlist.findMany({
       where: { userId: req.user.id },
-      include: { product: { include: { images: true } } }
+      include: { product: { select: WISHLIST_PRODUCT_SELECT } }
     });
 
     const wishlist = updatedWishlistRecords
@@ -111,7 +121,7 @@ exports.syncWishlist = async (req, res) => {
         id: w.product.id,
         title: w.product.title,
         price: w.product.price,
-        image: w.product.images?.[0]?.url || w.product.image || '',
+        image: w.product.images?.[0]?.url || '',
         images: w.product.images
       }));
 
@@ -148,7 +158,7 @@ exports.sendAbandonedWishlistReminder = async (req, res) => {
   } else if (req.user) {
     const dbWishlist = await prisma.wishlist.findMany({
       where: { userId: req.user.id },
-      include: { product: { include: { images: true } } }
+      include: { product: { select: WISHLIST_PRODUCT_SELECT } }
     });
     itemsToNotify = dbWishlist.map(w => ({
       id: w.product.id,

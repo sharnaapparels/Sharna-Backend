@@ -24,7 +24,13 @@ const runAbandonedWishlistScan = async () => {
         wishlist: {
           include: {
             product: {
-              include: { images: true }
+              select: {
+                id: true,
+                title: true,
+                price: true,
+                category: true,
+                images: { select: { url: true } }
+              }
             }
           }
         }
