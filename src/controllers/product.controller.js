@@ -188,41 +188,33 @@ exports.getProductBySlug = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    // 3. Measure images relation query
-    const tImgStart = Date.now();
-    const images = await prisma.productImage.findMany({
-      where: { productId: product.id },
-      select: { id: true, url: true, isPrimary: true }
-    });
-    const tImgDur = Date.now() - tImgStart;
-    console.log(`[DB-DIAG] /api/products/:slug | productImage.findMany (relation): ${tImgDur}ms (${images.length} rows)`);
-
-    // 4. Measure variants relation query
-    const tVarStart = Date.now();
-    const variants = await prisma.productVariant.findMany({
-      where: { productId: product.id },
-      select: { id: true, size: true, color: true, colorHex: true, stock: true, sku: true }
-    });
-    const tVarDur = Date.now() - tVarStart;
-    console.log(`[DB-DIAG] /api/products/:slug | productVariant.findMany (relation): ${tVarDur}ms (${variants.length} rows)`);
-
-    // 5. Measure reviews relation query
-    const tRevStart = Date.now();
-    const reviews = await prisma.review.findMany({
-      where: { productId: product.id, isVisible: true },
-      select: {
-        id: true,
-        rating: true,
-        title: true,
-        body: true,
-        imageUrl: true,
-        createdAt: true,
-        user: { select: { name: true } }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-    const tRevDur = Date.now() - tRevStart;
-    console.log(`[DB-DIAG] /api/products/:slug | review.findMany (relation): ${tRevDur}ms (${reviews.length} rows)`);
+    // 3. Concurrently fetch independent relations (images, variants, reviews)
+    const tRelStart = Date.now();
+    const [images, variants, reviews] = await Promise.all([
+      prisma.productImage.findMany({
+        where: { productId: product.id },
+        select: { id: true, url: true, isPrimary: true }
+      }),
+      prisma.productVariant.findMany({
+        where: { productId: product.id },
+        select: { id: true, size: true, color: true, colorHex: true, stock: true, sku: true }
+      }),
+      prisma.review.findMany({
+        where: { productId: product.id, isVisible: true },
+        select: {
+          id: true,
+          rating: true,
+          title: true,
+          body: true,
+          imageUrl: true,
+          createdAt: true,
+          user: { select: { name: true } }
+        },
+        orderBy: { createdAt: 'desc' }
+      })
+    ]);
+    const tRelDur = Date.now() - tRelStart;
+    console.log(`[DB-DIAG] /api/products/:slug | concurrent relations (images/variants/reviews): ${tRelDur}ms (images: ${images.length}, variants: ${variants.length}, reviews: ${reviews.length})`);
 
     const fullProduct = {
       ...product,
@@ -234,7 +226,7 @@ exports.getProductBySlug = async (req, res) => {
     const tSer = Date.now();
     const result = { success: true, product: fullProduct };
 
-    // 6. Bidirectional caching
+    // 4. Bidirectional caching
     setCache(`/api/products/${lowerParam}`, result);
     if (rawParam !== lowerParam) {
       setCache(`/api/products/${rawParam}`, result);
@@ -248,8 +240,8 @@ exports.getProductBySlug = async (req, res) => {
     }
 
     const tSerEnd = Date.now();
-    const totalDbMs = tProdDur + tImgDur + tVarDur + tRevDur;
-    console.log(`[DB-DIAG] /api/products/:slug | total DB sum: ${totalDbMs}ms | serialization: ${tSerEnd - tSer}ms | total request: ${Date.now() - t0}ms`);
+    const totalDbMs = tProdDur + tRelDur;
+    console.log(`[DB-DIAG] /api/products/:slug | total DB time: ${totalDbMs}ms | serialization: ${tSerEnd - tSer}ms | total request: ${Date.now() - t0}ms`);
     console.log(`[PERF] /api/products/:slug | DB query: ${totalDbMs}ms | serialization: ${tSerEnd - tSer}ms | total: ${Date.now() - t0}ms`);
 
     res.json(result);
