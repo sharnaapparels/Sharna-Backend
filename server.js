@@ -160,19 +160,42 @@ const { exec } = require('child_process');
 
 const startServer = async () => {
   try {
-    // Test the DB connection
+    // A. Measure $connect() round-trip cost
+    const tConnect = Date.now();
     await prisma.$connect();
+    console.log(`[DB-DIAG] $connect() | ${Date.now() - tConnect}ms`);
     console.log('[DB] Prisma connected');
 
-    // One-time startup warm-up: pre-heats the pgBouncer pool slot so the first
-    // real user request does not pay the full cold connection-acquisition cost.
-    // This runs exactly once on startup and is intentionally non-fatal.
-    const tWarmup = Date.now();
+    // B. Measure SELECT 1 — pgBouncer slot acquisition + TCP round-trip cost
+    const tSelect1 = Date.now();
     try {
       await prisma.$queryRaw`SELECT 1`;
-      console.log(`[DB] Connection warm-up completed in ${Date.now() - tWarmup}ms`);
+      console.log(`[DB-DIAG] SELECT 1 | ${Date.now() - tSelect1}ms`);
     } catch (warmupErr) {
-      console.error('[DB] Connection warm-up failed (non-fatal):', warmupErr.message);
+      console.error('[DB-DIAG] SELECT 1 failed (non-fatal):', warmupErr.message);
+    }
+
+    // C & D. Lean indexed Product lookups — scalar fields only, no relations, no catalog scan
+    try {
+      const tSample = Date.now();
+      const sample = await prisma.product.findFirst({ select: { id: true, slug: true } });
+      console.log(`[DB-DIAG] product.findFirst (sample scalar) | ${Date.now() - tSample}ms`);
+
+      if (sample) {
+        // C. Primary key index (clustered) lookup
+        const tById = Date.now();
+        await prisma.product.findUnique({ where: { id: sample.id }, select: { id: true } });
+        console.log(`[DB-DIAG] product.findUnique by id (PK index) | ${Date.now() - tById}ms`);
+
+        // D. Unique slug index lookup
+        const tBySlug = Date.now();
+        await prisma.product.findUnique({ where: { slug: sample.slug }, select: { slug: true } });
+        console.log(`[DB-DIAG] product.findUnique by slug (unique index) | ${Date.now() - tBySlug}ms`);
+      } else {
+        console.log('[DB-DIAG] No products in DB — skipping id/slug diagnostic queries');
+      }
+    } catch (diagErr) {
+      console.error('[DB-DIAG] startup product diagnostic failed (non-fatal):', diagErr.message);
     }
 
     const server = app.listen(PORT, '0.0.0.0', () => {

@@ -12,7 +12,11 @@ exports.getAllProducts = async (req, res) => {
   const isGenericFetch = !category && !collection && !search && !minPrice && !maxPrice;
   const cacheKey = isGenericFetch ? 'all_products_catalog' : (req.originalUrl || '/api/products');
 
+  const tCacheStart = Date.now();
   const cachedData = getCache(cacheKey);
+  const tCacheDur = Date.now() - tCacheStart;
+  console.log(`[DB-DIAG] /api/products | cache lookup: ${tCacheDur}ms`);
+
   if (cachedData) {
     return res.json(cachedData);
   }
@@ -28,8 +32,9 @@ exports.getAllProducts = async (req, res) => {
   }
 
   try {
-    const tDb = Date.now();
-    const products = await prisma.product.findMany({
+    // 1. Measure base Product findMany query (scalar fields only)
+    const tProdStart = Date.now();
+    const baseProducts = await prisma.product.findMany({
       where,
       select: {
         id: true,
@@ -41,14 +46,52 @@ exports.getAllProducts = async (req, res) => {
         collection: true,
         isPublished: true,
         isFeatured: true,
-        createdAt: true,
-        images: { select: { id: true, url: true, isPrimary: true } },
-        variants: { select: { id: true, size: true, color: true, stock: true } }
+        createdAt: true
       },
       take: parseInt(limit),
       orderBy: { createdAt: 'desc' }
     });
-    const tDbEnd = Date.now();
+    const tProdDur = Date.now() - tProdStart;
+    console.log(`[DB-DIAG] /api/products | product.findMany (base): ${tProdDur}ms (${baseProducts.length} rows)`);
+
+    const productIds = baseProducts.map(p => p.id);
+
+    // 2. Measure images relation query
+    const tImgStart = Date.now();
+    const images = productIds.length > 0 ? await prisma.productImage.findMany({
+      where: { productId: { in: productIds } },
+      select: { id: true, url: true, isPrimary: true, productId: true }
+    }) : [];
+    const tImgDur = Date.now() - tImgStart;
+    console.log(`[DB-DIAG] /api/products | productImage.findMany (relation): ${tImgDur}ms (${images.length} rows)`);
+
+    // 3. Measure variants relation query
+    const tVarStart = Date.now();
+    const variants = productIds.length > 0 ? await prisma.productVariant.findMany({
+      where: { productId: { in: productIds } },
+      select: { id: true, size: true, color: true, stock: true, productId: true }
+    }) : [];
+    const tVarDur = Date.now() - tVarStart;
+    console.log(`[DB-DIAG] /api/products | productVariant.findMany (relation): ${tVarDur}ms (${variants.length} rows)`);
+
+    // Assemble relations
+    const imageMap = {};
+    images.forEach(img => {
+      if (!imageMap[img.productId]) imageMap[img.productId] = [];
+      imageMap[img.productId].push({ id: img.id, url: img.url, isPrimary: img.isPrimary });
+    });
+
+    const variantMap = {};
+    variants.forEach(v => {
+      if (!variantMap[v.productId]) variantMap[v.productId] = [];
+      variantMap[v.productId].push({ id: v.id, size: v.size, color: v.color, stock: v.stock });
+    });
+
+    const products = baseProducts.map(p => ({
+      ...p,
+      images: imageMap[p.id] || [],
+      variants: variantMap[p.id] || []
+    }));
 
     const sanitizedProducts = products.map(p => ({
       ...p,
@@ -60,11 +103,13 @@ exports.getAllProducts = async (req, res) => {
       }))
     }));
 
+    const totalDbMs = tProdDur + tImgDur + tVarDur;
     const result = { success: true, products: sanitizedProducts, total: sanitizedProducts.length, page: 1, pages: 1 };
     setCache(cacheKey, result);
     if (isGenericFetch) setCache('all_products_catalog', result);
 
-    console.log(`[PERF] /api/products | DB query: ${tDbEnd - tDb}ms | total: ${Date.now() - t0}ms`);
+    console.log(`[DB-DIAG] /api/products | total DB sum: ${totalDbMs}ms | total request: ${Date.now() - t0}ms`);
+    console.log(`[PERF] /api/products | DB query: ${totalDbMs}ms | total: ${Date.now() - t0}ms`);
     res.json(result);
   } catch (err) {
     console.error("Fetch products error:", err.message);
@@ -76,43 +121,6 @@ exports.getAllProducts = async (req, res) => {
   }
 };
 
-// Lean PDP Projection — only retrieves required columns to minimize Supabase egress
-const PDP_PRODUCT_SELECT = {
-  id: true,
-  title: true,
-  slug: true,
-  description: true,
-  price: true,
-  salePrice: true,
-  category: true,
-  collection: true,
-  fabric: true,
-  care: true,
-  isPublished: true,
-  isFeatured: true,
-  createdAt: true,
-  updatedAt: true,
-  images: {
-    select: { id: true, url: true, isPrimary: true }
-  },
-  variants: {
-    select: { id: true, size: true, color: true, colorHex: true, stock: true, sku: true }
-  },
-  reviews: {
-    where: { isVisible: true },
-    select: {
-      id: true,
-      rating: true,
-      title: true,
-      body: true,
-      imageUrl: true,
-      createdAt: true,
-      user: { select: { name: true } }
-    },
-    orderBy: { createdAt: 'desc' }
-  }
-};
-
 // GET /api/products/:slug (matches slug or id using optimized direct unique indexes)
 exports.getProductBySlug = async (req, res) => {
   const t0 = Date.now();
@@ -120,65 +128,129 @@ exports.getProductBySlug = async (req, res) => {
   const lowerParam = rawParam.toLowerCase();
 
   // 1. Check in-memory cache for fast hit (supports both slug and ID keys)
+  const tCacheStart = Date.now();
   const cachedData = getCache(`/api/products/${lowerParam}`) || getCache(`/api/products/${rawParam}`);
+  const tCacheDur = Date.now() - tCacheStart;
+  console.log(`[DB-DIAG] /api/products/:slug | cache lookup: ${tCacheDur}ms`);
+
   if (cachedData) {
     console.log(`[PERF] /api/products/:slug | cache: HIT | total: ${Date.now() - t0}ms`);
     return res.json(cachedData);
   }
 
-  const tDb = Date.now();
+  const baseSelect = {
+    id: true,
+    title: true,
+    slug: true,
+    description: true,
+    price: true,
+    salePrice: true,
+    category: true,
+    collection: true,
+    fabric: true,
+    care: true,
+    isPublished: true,
+    isFeatured: true,
+    createdAt: true,
+    updatedAt: true
+  };
+
   try {
     let product = null;
     const isCuidLike = /^c[a-z0-9]{20,}$/i.test(rawParam);
 
-    // 2. Optimized single-index lookup: use primary key index for CUID IDs, unique index for slugs
+    // 2. Measure single-index base product lookup
+    const tProdStart = Date.now();
     if (isCuidLike) {
       product = await prisma.product.findUnique({
         where: { id: rawParam },
-        select: PDP_PRODUCT_SELECT
+        select: baseSelect
       });
     }
 
     if (!product) {
-      // Direct indexed seek on Product.slug unique constraint
       product = await prisma.product.findUnique({
         where: { slug: lowerParam },
-        select: PDP_PRODUCT_SELECT
+        select: baseSelect
       });
     }
 
     if (!product && !isCuidLike) {
-      // Fallback: check Product.id in case identifier was a non-CUID formatted ID
       product = await prisma.product.findUnique({
         where: { id: rawParam },
-        select: PDP_PRODUCT_SELECT
+        select: baseSelect
       }).catch(() => null);
     }
-
-    const tDbEnd = Date.now();
+    const tProdDur = Date.now() - tProdStart;
+    console.log(`[DB-DIAG] /api/products/:slug | product.findUnique (base lookup): ${tProdDur}ms`);
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    const tSer = Date.now();
-    const result = { success: true, product };
+    // 3. Measure images relation query
+    const tImgStart = Date.now();
+    const images = await prisma.productImage.findMany({
+      where: { productId: product.id },
+      select: { id: true, url: true, isPrimary: true }
+    });
+    const tImgDur = Date.now() - tImgStart;
+    console.log(`[DB-DIAG] /api/products/:slug | productImage.findMany (relation): ${tImgDur}ms (${images.length} rows)`);
 
-    // 3. Bidirectional caching: store by both slug and ID so either route hits memory
+    // 4. Measure variants relation query
+    const tVarStart = Date.now();
+    const variants = await prisma.productVariant.findMany({
+      where: { productId: product.id },
+      select: { id: true, size: true, color: true, colorHex: true, stock: true, sku: true }
+    });
+    const tVarDur = Date.now() - tVarStart;
+    console.log(`[DB-DIAG] /api/products/:slug | productVariant.findMany (relation): ${tVarDur}ms (${variants.length} rows)`);
+
+    // 5. Measure reviews relation query
+    const tRevStart = Date.now();
+    const reviews = await prisma.review.findMany({
+      where: { productId: product.id, isVisible: true },
+      select: {
+        id: true,
+        rating: true,
+        title: true,
+        body: true,
+        imageUrl: true,
+        createdAt: true,
+        user: { select: { name: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    const tRevDur = Date.now() - tRevStart;
+    console.log(`[DB-DIAG] /api/products/:slug | review.findMany (relation): ${tRevDur}ms (${reviews.length} rows)`);
+
+    const fullProduct = {
+      ...product,
+      images,
+      variants,
+      reviews
+    };
+
+    const tSer = Date.now();
+    const result = { success: true, product: fullProduct };
+
+    // 6. Bidirectional caching
     setCache(`/api/products/${lowerParam}`, result);
     if (rawParam !== lowerParam) {
       setCache(`/api/products/${rawParam}`, result);
     }
-    if (product.id) {
-      setCache(`/api/products/${product.id}`, result);
-      setCache(`/api/products/${product.id.toLowerCase()}`, result);
+    if (fullProduct.id) {
+      setCache(`/api/products/${fullProduct.id}`, result);
+      setCache(`/api/products/${fullProduct.id.toLowerCase()}`, result);
     }
-    if (product.slug) {
-      setCache(`/api/products/${product.slug.toLowerCase()}`, result);
+    if (fullProduct.slug) {
+      setCache(`/api/products/${fullProduct.slug.toLowerCase()}`, result);
     }
 
     const tSerEnd = Date.now();
-    console.log(`[PERF] /api/products/:slug | DB query: ${tDbEnd - tDb}ms | serialization: ${tSerEnd - tSer}ms | total: ${Date.now() - t0}ms`);
+    const totalDbMs = tProdDur + tImgDur + tVarDur + tRevDur;
+    console.log(`[DB-DIAG] /api/products/:slug | total DB sum: ${totalDbMs}ms | serialization: ${tSerEnd - tSer}ms | total request: ${Date.now() - t0}ms`);
+    console.log(`[PERF] /api/products/:slug | DB query: ${totalDbMs}ms | serialization: ${tSerEnd - tSer}ms | total: ${Date.now() - t0}ms`);
 
     res.json(result);
   } catch (err) {
