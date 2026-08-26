@@ -1,4 +1,14 @@
 require('dotenv').config({ override: true });
+
+// Development safety warning (non-blocking)
+if (process.env.NODE_ENV !== 'production') {
+  const dbUrl = process.env.DATABASE_URL || '';
+  if (dbUrl.includes('supabase.com') || dbUrl.includes('supabase.co')) {
+    console.warn('\n⚠️  WARNING: Development environment is using a Supabase database URL.');
+    console.warn('⚠️  Avoid running scratch/test scripts against the production database.\n');
+  }
+}
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -121,18 +131,9 @@ if (process.env.NODE_ENV !== 'production') {
     skip: (req) => req.method === 'GET'
   }));
 }
-
-const { seedCatalogIfNeeded } = require('./src/config/seedCatalog');
-
-// Health check
-app.get('/health', async (req, res) => {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    seedCatalogIfNeeded();
-    res.json({ status: 'OK', database: 'PostgreSQL Connected', timestamp: new Date() });
-  } catch (error) {
-    res.status(500).json({ status: 'ERROR', database: 'Disconnected' });
-  }
+// Health check (lightweight, zero-DB process health endpoint)
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK', uptime: process.uptime(), timestamp: new Date() });
 });
 
 // API Routes
