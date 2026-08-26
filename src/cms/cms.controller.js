@@ -352,3 +352,177 @@ exports.updateHomepageCMS = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to save homepage CMS settings" });
   }
 };
+
+// ─── COLLECTIONS PAGE CMS ───────────────────────────────────────────────────
+const COLLECTIONS_CMS_FILE_PATH = path.join(__dirname, '../../data/collections-cms.json');
+
+const DEFAULT_COLLECTIONS_CONFIG = [
+  { id: 'col-1', name: 'Suit Sets', title: 'Suit Sets', subtitle: 'Anarkalis & Salwars', image: '/src/assets/reception-2.png', route: '/shop?category=suit-sets', path: '/shop?category=suit-sets', isActive: true, sortOrder: 1 },
+  { id: 'col-2', name: 'Festive Collection', title: 'Festive Collection', subtitle: 'Heritage Weaves', image: '/src/assets/festive-1.png', route: '/shop?collection=festive-collection', path: '/shop?collection=festive-collection', isActive: true, sortOrder: 2 },
+  { id: 'col-3', name: 'Short Kurtis & Kurtas', title: 'Short Kurtis & Kurtas', subtitle: 'Everyday Ethnic', image: '/src/assets/reception-1.png', route: '/shop?category=short-kurtis', path: '/shop?category=short-kurtis', isActive: true, sortOrder: 3 },
+  { id: 'col-4', name: 'Co-Ord Sets', title: 'Co-Ord Sets', subtitle: 'Indo-Western Edits', image: '/src/assets/co-ord-blush.png', route: '/shop?category=coord-sets', path: '/shop?category=coord-sets', isActive: true, sortOrder: 4 },
+  { id: 'col-5', name: 'Dresses & Shirts', title: 'Dresses & Shirts', subtitle: 'Festive Luxe & Handcrafted', image: '/src/assets/festive-2.png', route: '/shop?category=dresses', path: '/shop?category=dresses', isActive: true, sortOrder: 5 },
+  { id: 'col-6', name: 'Ready To Ship', title: 'Ready To Ship', subtitle: '24-48 Hour Dispatch', image: '/src/assets/ready-1.png', route: '/ready-to-ship', path: '/ready-to-ship', isActive: true, sortOrder: 6 }
+];
+
+let collectionsResponseCache = null;
+let collectionsCacheTime = 0;
+const COLLECTIONS_CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
+const clearCollectionsCache = () => {
+  collectionsResponseCache = null;
+  collectionsCacheTime = 0;
+};
+
+const getCollectionsConfig = async () => {
+  try {
+    const dir = path.dirname(COLLECTIONS_CMS_FILE_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    if (fs.existsSync(COLLECTIONS_CMS_FILE_PATH)) {
+      const raw = fs.readFileSync(COLLECTIONS_CMS_FILE_PATH, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+
+    // Auto-seed default collections JSON if missing
+    fs.writeFileSync(COLLECTIONS_CMS_FILE_PATH, JSON.stringify(DEFAULT_COLLECTIONS_CONFIG, null, 2), 'utf8');
+    return DEFAULT_COLLECTIONS_CONFIG;
+  } catch (err) {
+    console.error("Collections Config read error:", err);
+    return DEFAULT_COLLECTIONS_CONFIG;
+  }
+};
+
+// GET /api/cms/collections (Public customer endpoint)
+exports.getCollectionsCMS = async (req, res) => {
+  if (collectionsResponseCache && (Date.now() - collectionsCacheTime < COLLECTIONS_CACHE_TTL_MS)) {
+    return res.json(collectionsResponseCache);
+  }
+
+  try {
+    const rawCollections = await getCollectionsConfig();
+
+    // Sanitize any residual base64 data URLs
+    const sanitized = rawCollections.map((col, idx) => ({
+      id: col.id || `col-${idx + 1}`,
+      title: col.title || col.name || 'Collection',
+      subtitle: col.subtitle || '',
+      image: (typeof col.image === 'string' && col.image.startsWith('data:image'))
+        ? 'https://res.cloudinary.com/dph921x1w/image/upload/v1724500000/sharna-fallback.jpg'
+        : (col.image || col.img || '/src/assets/reception-2.png'),
+      route: col.route || col.path || '/collections',
+      isActive: col.isActive !== false,
+      sortOrder: typeof col.sortOrder === 'number' ? col.sortOrder : idx + 1
+    }));
+
+    const responseData = {
+      success: true,
+      collections: sanitized
+    };
+
+    collectionsResponseCache = responseData;
+    collectionsCacheTime = Date.now();
+
+    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
+    res.json(responseData);
+  } catch (err) {
+    console.error("Fetch Collections CMS error:", err);
+    res.status(500).json({ success: false, message: "Failed to retrieve collections CMS settings" });
+  }
+};
+
+// PUT /api/cms/collections (Admin protected endpoint)
+exports.updateCollectionsCMS = async (req, res) => {
+  try {
+    clearCollectionsCache();
+    const payload = Array.isArray(req.body) ? req.body : (req.body?.collections || null);
+
+    if (!Array.isArray(payload) || payload.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payload. An array of collection items is required."
+      });
+    }
+
+    // Validate each collection card
+    const validated = [];
+    for (let i = 0; i < payload.length; i++) {
+      const item = payload[i];
+      const title = (item.title || item.name || '').trim();
+      const image = (item.image || item.img || '').trim();
+      const route = (item.route || item.path || '').trim();
+
+      if (!title) {
+        return res.status(400).json({
+          success: false,
+          message: `Collection card at index ${i} is missing a required title.`
+        });
+      }
+
+      if (!image) {
+        return res.status(400).json({
+          success: false,
+          message: `Collection card "${title}" is missing an image URL.`
+        });
+      }
+
+      if (image.startsWith('data:image')) {
+        return res.status(400).json({
+          success: false,
+          message: `Base64 images are not permitted in card "${title}". Please upload to Cloudinary.`
+        });
+      }
+
+      if (!route || !route.startsWith('/')) {
+        return res.status(400).json({
+          success: false,
+          message: `Collection card "${title}" has an invalid route: "${route}". Routes must start with "/".`
+        });
+      }
+
+      validated.push({
+        id: item.id || `col-${i + 1}`,
+        name: title,
+        title: title,
+        subtitle: (item.subtitle || '').trim(),
+        image: image,
+        route: route,
+        path: route,
+        isActive: item.isActive !== false,
+        sortOrder: typeof item.sortOrder === 'number' ? item.sortOrder : i + 1
+      });
+    }
+
+    // Atomic write to data/collections-cms.json
+    const dir = path.dirname(COLLECTIONS_CMS_FILE_PATH);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+
+    const tempFile = `${COLLECTIONS_CMS_FILE_PATH}.tmp.${Date.now()}`;
+    fs.writeFileSync(tempFile, JSON.stringify(validated, null, 2), 'utf8');
+    fs.renameSync(tempFile, COLLECTIONS_CMS_FILE_PATH);
+
+    res.json({
+      success: true,
+      message: "Collection CMS configuration updated successfully!",
+      collections: validated
+    });
+  } catch (err) {
+    console.error("Update Collections CMS error:", err);
+    res.status(500).json({ success: false, message: "Failed to save collections CMS settings" });
+  }
+};
+
+module.exports = {
+  getHomepageCMS: exports.getHomepageCMS,
+  getTestimonials: exports.getTestimonials,
+  updateHomepageCMS: exports.updateHomepageCMS,
+  getCollectionsCMS: exports.getCollectionsCMS,
+  updateCollectionsCMS: exports.updateCollectionsCMS,
+  clearCMSCache,
+  clearCollectionsCache
+};

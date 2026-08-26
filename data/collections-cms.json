@@ -1,0 +1,68 @@
+[
+  {
+    "id": "col-1",
+    "name": "Suit Sets",
+    "title": "Suit Sets",
+    "subtitle": "Anarkalis & Salwars",
+    "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787658311/sharna_products/sxeopgxcfbdev4pbj6w4.jpg",
+    "route": "/shop?category=suit-sets",
+    "path": "/shop?category=suit-sets",
+    "isActive": true,
+    "sortOrder": 1
+  },
+  {
+    "id": "col-2",
+    "name": "Festive Collection",
+    "title": "Festive Collection",
+    "subtitle": "Heritage Weaves",
+    "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787714171/sharna_products/jfch6gzj2sqzyqpfkqk2.jpg",
+    "route": "/shop?collection=festive-collection",
+    "path": "/shop?collection=festive-collection",
+    "isActive": true,
+    "sortOrder": 2
+  },
+  {
+    "id": "col-3",
+    "name": "Short Kurtis & Kurtas",
+    "title": "Short Kurtis & Kurtas",
+    "subtitle": "Everyday Ethnic",
+    "image": "/src/assets/reception-1.png",
+    "route": "/shop?category=short-kurtis",
+    "path": "/shop?category=short-kurtis",
+    "isActive": true,
+    "sortOrder": 3
+  },
+  {
+    "id": "col-4",
+    "name": "Co-Ord Sets",
+    "title": "Co-Ord Sets",
+    "subtitle": "Indo-Western Edits",
+    "image": "/src/assets/co-ord-blush.png",
+    "route": "/shop?category=coord-sets",
+    "path": "/shop?category=coord-sets",
+    "isActive": true,
+    "sortOrder": 4
+  },
+  {
+    "id": "col-5",
+    "name": "Dresses & Shirts",
+    "title": "Dresses & Shirts",
+    "subtitle": "Festive Luxe & Handcrafted",
+    "image": "/src/assets/festive-2.png",
+    "route": "/shop?category=dresses",
+    "path": "/shop?category=dresses",
+    "isActive": true,
+    "sortOrder": 5
+  },
+  {
+    "id": "col-6",
+    "name": "Ready To Ship",
+    "title": "Ready To Ship",
+    "subtitle": "24-48 Hour Dispatch",
+    "image": "/src/assets/ready-1.png",
+    "route": "/ready-to-ship",
+    "path": "/ready-to-ship",
+    "isActive": true,
+    "sortOrder": 6
+  }
+]
