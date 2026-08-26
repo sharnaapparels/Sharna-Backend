@@ -162,7 +162,18 @@ const startServer = async () => {
   try {
     // Test the DB connection
     await prisma.$connect();
-    console.log('✅ PostgreSQL Connected via Prisma');
+    console.log('[DB] Prisma connected');
+
+    // One-time startup warm-up: pre-heats the pgBouncer pool slot so the first
+    // real user request does not pay the full cold connection-acquisition cost.
+    // This runs exactly once on startup and is intentionally non-fatal.
+    const tWarmup = Date.now();
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      console.log(`[DB] Connection warm-up completed in ${Date.now() - tWarmup}ms`);
+    } catch (warmupErr) {
+      console.error('[DB] Connection warm-up failed (non-fatal):', warmupErr.message);
+    }
 
     const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Server running on port ${PORT}`);
