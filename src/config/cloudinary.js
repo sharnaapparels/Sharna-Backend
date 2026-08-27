@@ -29,7 +29,7 @@ const storage = multer.memoryStorage();
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit to support high-resolution photos
+  limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit to support high-resolution RAW photos
 });
 
 module.exports = {

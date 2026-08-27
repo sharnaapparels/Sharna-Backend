@@ -6,8 +6,8 @@
       "subtitle": "HANDWOVEN & HANDSPUN COTTON ATTIRE · CRAFTED FOR THE DISCERNING MUSE",
       "linkPath": "/collections",
       "buttonText": "DISCOVER COLLECTION",
-      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787861633/sharna_products/bf2ppooqrx8cda52z8u0.png",
-      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862547/sharna_products/dz6tzyavudzggsqkfogv.png",
+      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787867216/sharna_banners/zrz0pbqfvr13v6ysx2me.png",
+      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787867237/sharna_banners/lpq6ofqo6oxhuxxcotgi.png",
       "desktopImageUrl": "/src/assets/hero-slide-1.png"
     },
     {
@@ -17,7 +17,7 @@
       "linkPath": "/collections",
       "buttonText": "EXPLORE CELEBRITY LOOKS",
       "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862351/sharna_products/bhhjppaimu0ojppewehu.png",
-      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862082/sharna_products/vyq3njlzu0oygcskqjyi.jpg",
+      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787867230/sharna_banners/yslv2flhdtzcwvjc0t88.png",
       "desktopImageUrl": "/src/assets/hero-slide-3.png"
     }
   ],
@@ -36,7 +36,8 @@
     "cmt0h3qgk0022vsacp4gnor1s",
     "cmt0h3q6g001yvsac1mo5r3qo",
     "cmt0h3pw5001uvsacl0cjl4n7",
-    "cmt72xrvp0000pd014vcdeyzm"
+    "cmt72xrvp0000pd014vcdeyzm",
+    "cmt79bxnc0000vsv8bc9avcis"
   ],
   "readyToShipProductIds": [
     "cmt0hjmw20000vsm8huvbrryv",
@@ -70,7 +71,7 @@
       "isVerified": true
     }
   ],
-  "updatedAt": "2026-08-27T20:29:22.717Z",
+  "updatedAt": "2026-08-27T22:10:20.006Z",
   "ethnicCategories": [
     {
       "id": "cat-1",

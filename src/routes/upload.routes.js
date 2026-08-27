@@ -98,4 +98,40 @@ router.post('/multiple', protect, adminOnly, upload.array('images', 5), async (r
   }
 });
 
+// GET /api/upload/cloudinary-signature (Admin only - Direct browser to Cloudinary upload)
+router.get('/cloudinary-signature', protect, adminOnly, (req, res) => {
+  try {
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      return res.status(503).json({ success: false, message: 'Cloudinary direct credentials not configured on server' });
+    }
+
+    const folder = req.query.folder || 'sharna_banners';
+    const timestamp = Math.round(new Date().getTime() / 1000);
+
+    const signature = cloudinary.utils.api_sign_request(
+      {
+        timestamp: timestamp,
+        folder: folder
+      },
+      apiSecret
+    );
+
+    res.json({
+      success: true,
+      signature,
+      timestamp,
+      apiKey,
+      cloudName,
+      folder
+    });
+  } catch (error) {
+    console.error('Cloudinary Signature Error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to generate upload signature', error: error.message });
+  }
+});
+
 module.exports = router;
