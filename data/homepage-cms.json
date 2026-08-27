@@ -6,19 +6,9 @@
       "subtitle": "HANDWOVEN & HANDSPUN COTTON ATTIRE · CRAFTED FOR THE DISCERNING MUSE",
       "linkPath": "/collections",
       "buttonText": "DISCOVER COLLECTION",
-      "imageUrl": "/src/assets/hero-slide-1.png",
-      "mobileImageUrl": "/src/assets/hero-mobile-1.png",
+      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787861633/sharna_products/bf2ppooqrx8cda52z8u0.png",
+      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862547/sharna_products/dz6tzyavudzggsqkfogv.png",
       "desktopImageUrl": "/src/assets/hero-slide-1.png"
-    },
-    {
-      "id": "slide-2",
-      "title": "ARTISANAL EMBROIDERY & QUIET ELEGANCE",
-      "subtitle": "SEASONAL CO-ORD SETS, TUNIC DRESSES & LUXURY SUITS",
-      "linkPath": "/ready-to-ship",
-      "buttonText": "SHOP READY TO SHIP",
-      "imageUrl": "/src/assets/hero-slide-2.png",
-      "mobileImageUrl": "/src/assets/hero-mobile-2.png",
-      "desktopImageUrl": "/src/assets/hero-slide-2.png"
     },
     {
       "id": "slide-3",
@@ -26,8 +16,8 @@
       "subtitle": "EXPLORE STATEMENT PIECES DESIGNED FOR EVERY OCCASION",
       "linkPath": "/collections",
       "buttonText": "EXPLORE CELEBRITY LOOKS",
-      "imageUrl": "/src/assets/hero-slide-3.png",
-      "mobileImageUrl": "/src/assets/hero-mobile-3.png",
+      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862351/sharna_products/bhhjppaimu0ojppewehu.png",
+      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862082/sharna_products/vyq3njlzu0oygcskqjyi.jpg",
       "desktopImageUrl": "/src/assets/hero-slide-3.png"
     }
   ],
@@ -80,7 +70,7 @@
       "isVerified": true
     }
   ],
-  "updatedAt": "2026-08-25T18:29:07.539Z",
+  "updatedAt": "2026-08-27T20:29:22.717Z",
   "ethnicCategories": [
     {
       "id": "cat-1",
