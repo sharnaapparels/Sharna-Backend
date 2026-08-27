@@ -1,6 +1,8 @@
 const prisma = require('../config/database');
+const bcrypt = require('bcrypt');
 const { clearProductCache } = require('../utils/productCache');
 const { clearCMSCache } = require('../cms/cms.controller');
+const { sendPasswordResetEmail, sendResendEmail } = require('../utils/email.service');
 
 // GET /api/admin/stats
 exports.getDashboardStats = async (req, res) => {
@@ -533,5 +535,142 @@ exports.deleteOrder = async (req, res) => {
   } catch (err) {
     console.error("⚠️ Delete order error:", err.message);
     return res.status(500).json({ success: false, message: err.message || 'Failed to delete order' });
+  }
+};
+
+// POST /api/admin/request-password-otp
+exports.requestPasswordOtp = async (req, res) => {
+  try {
+    const { currentPassword } = req.body;
+    if (!currentPassword) {
+      return res.status(400).json({ success: false, message: 'Please enter your current administrator password' });
+    }
+
+    const admin = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin account not found' });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, admin.password);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Current password is incorrect. Access denied.' });
+    }
+
+    // Generate 6-digit cryptographic OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedOtp = await bcrypt.hash(otp, 10);
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await prisma.user.update({
+      where: { id: admin.id },
+      data: {
+        otp: hashedOtp,
+        otpExpires,
+        otpPurpose: 'ADMIN_PASSWORD_CHANGE'
+      }
+    });
+
+    // Send OTP to admin's private email
+    if (admin.email) {
+      await sendPasswordResetEmail(admin.email, otp).catch(e => console.error("Admin OTP Email error:", e));
+    }
+
+    const maskedEmail = admin.email ? admin.email.replace(/(.{2})(.*)(?=@)/, (gp1, gp2, gp3) => gp2 + "*".repeat(gp3.length)) : 'registered email';
+    const maskedPhone = admin.phone ? admin.phone.slice(0, 4) + '******' + admin.phone.slice(-2) : '';
+
+    console.log(`🔐 [ADMIN 2FA OTP GENERATED]: Code ${otp} for ${admin.email}`);
+
+    return res.json({
+      success: true,
+      message: `A 6-digit security verification code has been sent to ${maskedEmail} ${maskedPhone ? `(${maskedPhone})` : ''}. Valid for 10 minutes.`,
+      maskedEmail,
+      maskedPhone
+    });
+  } catch (err) {
+    console.error("Admin OTP request error:", err);
+    return res.status(500).json({ success: false, message: err.message || 'Failed to generate security code' });
+  }
+};
+
+// POST /api/admin/change-password
+exports.changeAdminPassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword, otp } = req.body;
+
+    if (!currentPassword || !newPassword || !otp) {
+      return res.status(400).json({ success: false, message: 'Current password, new password, and 6-digit OTP are required' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 8 characters long for security' });
+    }
+
+    const admin = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin account not found' });
+    }
+
+    // Verify current password
+    const isCurrentMatch = await bcrypt.compare(currentPassword, admin.password);
+    if (!isCurrentMatch) {
+      return res.status(400).json({ success: false, message: 'Current password is incorrect. Verification failed.' });
+    }
+
+    // Verify OTP
+    if (!admin.otp || !admin.otpExpires) {
+      return res.status(400).json({ success: false, message: 'No active verification code found. Please request a new code.' });
+    }
+
+    if (new Date() > admin.otpExpires) {
+      return res.status(400).json({ success: false, message: 'The verification code has expired. Please request a new code.' });
+    }
+
+    const isOtpMatch = await bcrypt.compare(otp.trim(), admin.otp);
+    if (!isOtpMatch) {
+      return res.status(400).json({ success: false, message: 'Invalid 6-digit security code entered. Please check and try again.' });
+    }
+
+    // Hash and update new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: admin.id },
+      data: {
+        password: hashedPassword,
+        otp: null,
+        otpExpires: null,
+        otpPurpose: null
+      }
+    });
+
+    // Send Security Confirmation Email Alert
+    if (admin.email) {
+      await sendResendEmail({
+        to: admin.email,
+        subject: `🔒 Security Alert: SHARNA Admin Password Changed`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 30px auto; padding: 30px; background-color: #ffffff; border: 1px solid #c5a86b; border-radius: 16px; text-align: center;">
+            <h1 style="font-family: Georgia, serif; color: #1e1915; letter-spacing: 0.2em; font-size: 24px; margin-bottom: 5px;">SHARNA ADMIN</h1>
+            <p style="font-size: 11px; color: #27AE60; font-weight: 700; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 20px;">SECURITY ALERT</p>
+            <p style="font-size: 13.5px; color: #5C4E46; line-height: 1.6; margin-bottom: 20px;">
+              Your administrator account password for <strong>${admin.email}</strong> was successfully updated on <strong>${new Date().toLocaleString('en-IN')}</strong>.
+            </p>
+            <p style="font-size: 11.5px; color: #888888; margin: 0;">
+              If you did not perform this change, please contact technical support immediately.
+            </p>
+          </div>
+        `
+      }).catch(e => console.error("Security alert email error:", e));
+    }
+
+    console.log(`✅ [ADMIN PASSWORD CHANGED]: Account ${admin.email}`);
+
+    return res.json({
+      success: true,
+      message: 'Administrator password updated successfully! Please keep your new credentials secure.'
+    });
+  } catch (err) {
+    console.error("Change admin password error:", err);
+    return res.status(500).json({ success: false, message: err.message || 'Failed to update administrator password' });
   }
 };

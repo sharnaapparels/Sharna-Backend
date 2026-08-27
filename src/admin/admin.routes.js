@@ -18,4 +18,8 @@ router.delete('/products/:id', adminProtect, adminController.deleteProduct);
 router.get('/users', adminProtect, adminController.getAllUsers);
 router.delete('/users/:id', adminProtect, adminController.deleteUser);
 
+// ─── Admin Security & 2FA Password Change ──────────────────────────────────
+router.post('/request-password-otp', adminProtect, adminController.requestPasswordOtp);
+router.post('/change-password', adminProtect, adminController.changeAdminPassword);
+
 module.exports = router;
