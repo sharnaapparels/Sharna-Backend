@@ -1,15 +1,82 @@
 {
-  "heroSlides": [],
-  "newArrivalsProductIds": [
-    "cmt0hjmw20000vsm8huvbrryv",
-    "cmt71n3ze0000vs2okv99zlph",
-    "cmt72xrvp0000pd014vcdeyzm",
-    "cmt79bxnc0000vsv8bc9avcis"
+  "updatedAt": "2026-09-01T18:51:13.189Z",
+  "heroSlides": [
+    {
+      "id": "test-slide-1",
+      "title": "Test Live Banner",
+      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862351/sharna_products/bhhjppaimu0ojppewehu.png",
+      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862351/sharna_products/bhhjppaimu0ojppewehu.png"
+    }
   ],
-  "celebrityClosetProductIds": [
-    "cmt0h3qgk0022vsacp4gnor1s",
-    "cmt0h3q6g001yvsac1mo5r3qo",
-    "cmt0h3pw5001uvsacl0cjl4n7"
+  "testimonials": [
+    {
+      "id": "t-1",
+      "name": "ANANYA S.",
+      "quote": "The handwoven silk co-ord set I ordered exceeded every expectation. The texture, drape, and gold embroidery are pure perfection.",
+      "rating": 5,
+      "location": "MUMBAI",
+      "isVerified": true
+    },
+    {
+      "id": "t-2",
+      "name": "PRIYA K.",
+      "quote": "SHARNA's ready to ship delivery got my cocktail dress delivered in less than 24 hours. Phenomenal luxury craftsmanship!",
+      "rating": 5,
+      "location": "DELHI",
+      "isVerified": true
+    },
+    {
+      "id": "t-3",
+      "name": "RITU M.",
+      "quote": "Absolute luxury. The fit and subtle elegance of the festive suit collection made me feel like royalty.",
+      "rating": 5,
+      "location": "BANGALORE",
+      "isVerified": true
+    }
+  ],
+  "ethnicCategories": [
+    {
+      "id": "cat-1",
+      "tag": "Anarkalis & Salwars",
+      "link": "/shop?category=suit-sets",
+      "name": "SUIT SETS",
+      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787658311/sharna_products/sxeopgxcfbdev4pbj6w4.jpg"
+    },
+    {
+      "id": "cat-2",
+      "tag": "Indo-Western Edits",
+      "link": "/shop?category=coord-sets",
+      "name": "CO-ORD SETS",
+      "image": "/src/assets/ready-to-ship-2.png"
+    },
+    {
+      "id": "cat-3",
+      "tag": "Festive Luxe",
+      "link": "/shop?category=dresses",
+      "name": "DRESSES & GOWNS",
+      "image": "/src/assets/festive-1.png"
+    },
+    {
+      "id": "cat-4",
+      "tag": "Everyday Ethnic",
+      "link": "/shop?category=short-kurtis",
+      "name": "SHORT KURTIS",
+      "image": "/src/assets/reception-1.png"
+    },
+    {
+      "id": "cat-5",
+      "tag": "Handcrafted Blouses",
+      "link": "/shop?category=shirts",
+      "name": "ETHNIC SHIRTS",
+      "image": "/src/assets/celebrity-1.png"
+    },
+    {
+      "id": "cat-6",
+      "tag": "Heritage Weaves",
+      "link": "/shop?collection=festive-collection",
+      "name": "FESTIVE COLLECTION",
+      "image": "/src/assets/festive-2.png"
+    }
   ],
   "bestSellersProductIds": [
     "cmt0h3qgk0022vsacp4gnor1s",
@@ -17,81 +84,21 @@
     "cmt0h3pw5001uvsacl0cjl4n7",
     "cmt72xrvp0000pd014vcdeyzm"
   ],
+  "newArrivalsProductIds": [
+    "cmt0hjmw20000vsm8huvbrryv",
+    "cmt71n3ze0000vs2okv99zlph",
+    "cmt72xrvp0000pd014vcdeyzm",
+    "cmt79bxnc0000vsv8bc9avcis"
+  ],
   "readyToShipProductIds": [
     "cmt0hjmw20000vsm8huvbrryv",
     "cmt0h3qgk0022vsacp4gnor1s",
     "cmt0h3q6g001yvsac1mo5r3qo",
     "cmt0h3pls001qvsac2dvqe4h6"
   ],
-  "testimonials": [
-    {
-      "id": "t-1",
-      "quote": "The handwoven silk co-ord set I ordered exceeded every expectation. The texture, drape, and gold embroidery are pure perfection.",
-      "name": "ANANYA S.",
-      "location": "MUMBAI",
-      "rating": 5,
-      "isVerified": true
-    },
-    {
-      "id": "t-2",
-      "quote": "SHARNA's ready to ship delivery got my cocktail dress delivered in less than 24 hours. Phenomenal luxury craftsmanship!",
-      "name": "PRIYA K.",
-      "location": "DELHI",
-      "rating": 5,
-      "isVerified": true
-    },
-    {
-      "id": "t-3",
-      "quote": "Absolute luxury. The fit and subtle elegance of the festive suit collection made me feel like royalty.",
-      "name": "RITU M.",
-      "location": "BANGALORE",
-      "rating": 5,
-      "isVerified": true
-    }
-  ],
-  "updatedAt": "2026-08-28T17:26:27.793Z",
-  "ethnicCategories": [
-    {
-      "id": "cat-1",
-      "name": "SUIT SETS",
-      "tag": "Anarkalis & Salwars",
-      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787658311/sharna_products/sxeopgxcfbdev4pbj6w4.jpg",
-      "link": "/shop?category=suit-sets"
-    },
-    {
-      "id": "cat-2",
-      "name": "CO-ORD SETS",
-      "tag": "Indo-Western Edits",
-      "image": "/src/assets/ready-to-ship-2.png",
-      "link": "/shop?category=coord-sets"
-    },
-    {
-      "id": "cat-3",
-      "name": "DRESSES & GOWNS",
-      "tag": "Festive Luxe",
-      "image": "/src/assets/festive-1.png",
-      "link": "/shop?category=dresses"
-    },
-    {
-      "id": "cat-4",
-      "name": "SHORT KURTIS",
-      "tag": "Everyday Ethnic",
-      "image": "/src/assets/reception-1.png",
-      "link": "/shop?category=short-kurtis"
-    },
-    {
-      "id": "cat-5",
-      "name": "ETHNIC SHIRTS",
-      "tag": "Handcrafted Blouses",
-      "image": "/src/assets/celebrity-1.png",
-      "link": "/shop?category=shirts"
-    },
-    {
-      "id": "cat-6",
-      "name": "FESTIVE COLLECTION",
-      "tag": "Heritage Weaves",
-      "image": "/src/assets/festive-2.png",
-      "link": "/shop?collection=festive-collection"
-    }
+  "celebrityClosetProductIds": [
+    "cmt0h3qgk0022vsacp4gnor1s",
+    "cmt0h3q6g001yvsac1mo5r3qo",
+    "cmt0h3pw5001uvsacl0cjl4n7"
   ]
 }

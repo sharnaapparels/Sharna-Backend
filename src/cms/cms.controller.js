@@ -52,67 +52,43 @@ const DEFAULT_HOMEPAGE_CONFIG = {
 // Helper: Read CMS Config
 const getCMSConfig = async () => {
   try {
-    const dir = path.dirname(CMS_FILE_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    let config = null;
+
+    // 1. Fetch from persistent PostgreSQL database
+    try {
+      const dbEntry = await prisma.cmsConfig.findUnique({
+        where: { key: 'homepage' }
+      });
+      if (dbEntry && dbEntry.data) {
+        config = dbEntry.data;
+      }
+    } catch (dbErr) {
+      console.warn("PostgreSQL CMS read warning:", dbErr.message);
     }
 
-    let config = DEFAULT_HOMEPAGE_CONFIG;
-    if (fs.existsSync(CMS_FILE_PATH)) {
-      const raw = fs.readFileSync(CMS_FILE_PATH, 'utf8');
-      config = JSON.parse(raw);
-    }
-
-    // Auto-seed product IDs ONLY if any array is empty
-    let needsSave = false;
-    const hasMissingIds = (!config.newArrivalsProductIds || config.newArrivalsProductIds.length === 0) ||
-                          (!config.celebrityClosetProductIds || config.celebrityClosetProductIds.length === 0) ||
-                          (!config.bestSellersProductIds || config.bestSellersProductIds.length === 0) ||
-                          (!config.readyToShipProductIds || config.readyToShipProductIds.length === 0);
-
-    if (hasMissingIds) {
-      let dbProducts = [];
-      try {
-        dbProducts = await prisma.product.findMany({
-          where: { isPublished: true },
-          select: { id: true, category: true, collection: true, isFeatured: true }
-        });
-      } catch (e) {
-        console.warn("CMS DB Query Warning:", e.message);
-      }
-
-      if (!config.newArrivalsProductIds || config.newArrivalsProductIds.length === 0) {
-        const ids = dbProducts.filter(p => p.collection === 'new-arrivals' || p.category === 'new-arrivals').map(p => p.id);
-        config.newArrivalsProductIds = ids.length > 0 ? ids.slice(0, 6) : ['na1', 'na2', 'na3', 'na4'];
-        needsSave = true;
-      }
-
-      if (!config.celebrityClosetProductIds || config.celebrityClosetProductIds.length === 0) {
-        const ids = dbProducts.filter(p => p.collection === 'celebrity-closet' || p.category === 'Celebrity Closet').map(p => p.id);
-        config.celebrityClosetProductIds = ids.length > 0 ? ids.slice(0, 6) : ['c1', 'c2', 'c3', 'c4'];
-        needsSave = true;
-      }
-
-      if (!config.bestSellersProductIds || config.bestSellersProductIds.length === 0) {
-        const ids = dbProducts.filter(p => p.isFeatured || p.category === 'Best Sellers').map(p => p.id);
-        config.bestSellersProductIds = ids.length > 0 ? ids.slice(0, 6) : ['bs1', 'bs2', 'bs3', 'bs4'];
-        needsSave = true;
-      }
-
-      if (!config.readyToShipProductIds || config.readyToShipProductIds.length === 0) {
-        const ids = dbProducts.filter(p => p.collection === 'ready-to-ship' || p.category === 'ready-to-ship').map(p => p.id);
-        config.readyToShipProductIds = ids.length > 0 ? ids.slice(0, 6) : ['s1', 's2', 's3', 's4'];
-        needsSave = true;
+    // 2. Secondary fallback: read from local JSON file
+    if (!config) {
+      if (fs.existsSync(CMS_FILE_PATH)) {
+        try {
+          const raw = fs.readFileSync(CMS_FILE_PATH, 'utf8');
+          config = JSON.parse(raw);
+        } catch (_) {}
       }
     }
 
-    if (!config.ethnicCategories || config.ethnicCategories.length === 0) {
+    if (!config) {
+      config = DEFAULT_HOMEPAGE_CONFIG;
+    }
+
+    // Ensure all required arrays exist
+    if (!Array.isArray(config.heroSlides)) config.heroSlides = [];
+    if (!Array.isArray(config.newArrivalsProductIds)) config.newArrivalsProductIds = [];
+    if (!Array.isArray(config.celebrityClosetProductIds)) config.celebrityClosetProductIds = [];
+    if (!Array.isArray(config.bestSellersProductIds)) config.bestSellersProductIds = [];
+    if (!Array.isArray(config.readyToShipProductIds)) config.readyToShipProductIds = [];
+    if (!Array.isArray(config.testimonials)) config.testimonials = DEFAULT_HOMEPAGE_CONFIG.testimonials;
+    if (!Array.isArray(config.ethnicCategories) || config.ethnicCategories.length === 0) {
       config.ethnicCategories = DEFAULT_HOMEPAGE_CONFIG.ethnicCategories;
-      needsSave = true;
-    }
-
-    if (needsSave || !fs.existsSync(CMS_FILE_PATH)) {
-      fs.writeFileSync(CMS_FILE_PATH, JSON.stringify(config, null, 2), 'utf8');
     }
 
     return config;
@@ -309,10 +285,23 @@ exports.updateHomepageCMS = async (req, res) => {
       updatedAt: new Date().toISOString()
     };
 
-    const dir = path.dirname(CMS_FILE_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    // 1. Persist to PostgreSQL (Supabase) Database - Permanent & survives Railway restarts
+    try {
+      await prisma.cmsConfig.upsert({
+        where: { key: 'homepage' },
+        update: { data: updatedConfig },
+        create: { key: 'homepage', data: updatedConfig }
+      });
+    } catch (dbErr) {
+      console.error("DB CMS save error:", dbErr.message);
+    }
 
-    fs.writeFileSync(CMS_FILE_PATH, JSON.stringify(updatedConfig, null, 2), 'utf8');
+    // 2. Also write to local file as secondary cache
+    try {
+      const dir = path.dirname(CMS_FILE_PATH);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(CMS_FILE_PATH, JSON.stringify(updatedConfig, null, 2), 'utf8');
+    } catch (_) {}
 
     res.json({
       success: true,
@@ -348,21 +337,29 @@ const clearCollectionsCache = () => {
 
 const getCollectionsConfig = async () => {
   try {
-    const dir = path.dirname(COLLECTIONS_CMS_FILE_PATH);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
-    if (fs.existsSync(COLLECTIONS_CMS_FILE_PATH)) {
-      const raw = fs.readFileSync(COLLECTIONS_CMS_FILE_PATH, 'utf8');
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+    // 1. Fetch from persistent PostgreSQL database
+    try {
+      const dbEntry = await prisma.cmsConfig.findUnique({
+        where: { key: 'collections' }
+      });
+      if (dbEntry && dbEntry.data && Array.isArray(dbEntry.data) && dbEntry.data.length > 0) {
+        return dbEntry.data;
       }
+    } catch (dbErr) {
+      console.warn("PostgreSQL Collections CMS read warning:", dbErr.message);
     }
 
-    // Auto-seed default collections JSON if missing
-    fs.writeFileSync(COLLECTIONS_CMS_FILE_PATH, JSON.stringify(DEFAULT_COLLECTIONS_CONFIG, null, 2), 'utf8');
+    // 2. Secondary fallback: read from local file
+    if (fs.existsSync(COLLECTIONS_CMS_FILE_PATH)) {
+      try {
+        const raw = fs.readFileSync(COLLECTIONS_CMS_FILE_PATH, 'utf8');
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (_) {}
+    }
+
     return DEFAULT_COLLECTIONS_CONFIG;
   } catch (err) {
     console.error("Collections Config read error:", err);
@@ -470,13 +467,23 @@ exports.updateCollectionsCMS = async (req, res) => {
       });
     }
 
-    // Atomic write to data/collections-cms.json
-    const dir = path.dirname(COLLECTIONS_CMS_FILE_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    // 1. Persist to PostgreSQL (Supabase)
+    try {
+      await prisma.cmsConfig.upsert({
+        where: { key: 'collections' },
+        update: { data: validated },
+        create: { key: 'collections', data: validated }
+      });
+    } catch (dbErr) {
+      console.error("DB Collections CMS save error:", dbErr.message);
+    }
 
-    const tempFile = `${COLLECTIONS_CMS_FILE_PATH}.tmp.${Date.now()}`;
-    fs.writeFileSync(tempFile, JSON.stringify(validated, null, 2), 'utf8');
-    fs.renameSync(tempFile, COLLECTIONS_CMS_FILE_PATH);
+    // 2. Also write to local file as secondary backup
+    try {
+      const dir = path.dirname(COLLECTIONS_CMS_FILE_PATH);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(COLLECTIONS_CMS_FILE_PATH, JSON.stringify(validated, null, 2), 'utf8');
+    } catch (_) {}
 
     res.json({
       success: true,

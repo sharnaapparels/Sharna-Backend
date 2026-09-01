@@ -275,3 +275,12 @@ enum PolicyType {
   PRIVACY
   TERMS
 }
+
+// ─────────────────────────────────────────────
+// CMS CONFIG (Homepage, Collections, etc.)
+// ─────────────────────────────────────────────
+model CmsConfig {
+  key       String   @id
+  data      Json
+  updatedAt DateTime @updatedAt
+}
