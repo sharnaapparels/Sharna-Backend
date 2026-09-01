@@ -5,35 +5,7 @@ const prisma = require('../config/database');
 const CMS_FILE_PATH = path.join(__dirname, '../../data/homepage-cms.json');
 
 const DEFAULT_HOMEPAGE_CONFIG = {
-  heroSlides: [
-    {
-      id: 'slide-1',
-      title: 'WHERE TRADITION MEETS MODERN LUXURY',
-      subtitle: 'HANDWOVEN & HANDSPUN COTTON ATTIRE · CRAFTED FOR THE DISCERNING MUSE',
-      linkPath: '/collections',
-      buttonText: 'DISCOVER COLLECTION',
-      imageUrl: '/src/assets/hero-slide-1.png',
-      mobileImageUrl: '/src/assets/hero-mobile-1.png'
-    },
-    {
-      id: 'slide-2',
-      title: 'ARTISANAL EMBROIDERY & QUIET ELEGANCE',
-      subtitle: 'SEASONAL CO-ORD SETS, TUNIC DRESSES & LUXURY SUITS',
-      linkPath: '/ready-to-ship',
-      buttonText: 'SHOP READY TO SHIP',
-      imageUrl: '/src/assets/hero-slide-2.png',
-      mobileImageUrl: '/src/assets/hero-mobile-2.png'
-    },
-    {
-      id: 'slide-3',
-      title: 'CELEBRITY CURATION · AS SEEN ON MUSES',
-      subtitle: 'EXPLORE STATEMENT PIECES DESIGNED FOR EVERY OCCASION',
-      linkPath: '/collections',
-      buttonText: 'EXPLORE CELEBRITY LOOKS',
-      imageUrl: '/src/assets/hero-slide-3.png',
-      mobileImageUrl: '/src/assets/hero-mobile-3.png'
-    }
-  ],
+  heroSlides: [],
   newArrivalsProductIds: [],
   celebrityClosetProductIds: [],
   bestSellersProductIds: [],
@@ -327,13 +299,13 @@ exports.updateHomepageCMS = async (req, res) => {
 
     const updatedConfig = {
       ...currentConfig,
-      heroSlides: heroSlides || currentConfig.heroSlides,
+      heroSlides: Array.isArray(heroSlides) ? heroSlides : currentConfig.heroSlides,
       newArrivalsProductIds: newArrivalsProductIds !== undefined ? newArrivalsProductIds : currentConfig.newArrivalsProductIds,
       celebrityClosetProductIds: celebrityClosetProductIds !== undefined ? celebrityClosetProductIds : currentConfig.celebrityClosetProductIds,
       bestSellersProductIds: bestSellersProductIds !== undefined ? bestSellersProductIds : currentConfig.bestSellersProductIds,
       readyToShipProductIds: readyToShipProductIds !== undefined ? readyToShipProductIds : currentConfig.readyToShipProductIds,
-      testimonials: testimonials || currentConfig.testimonials,
-      ethnicCategories: ethnicCategories || currentConfig.ethnicCategories,
+      testimonials: Array.isArray(testimonials) ? testimonials : currentConfig.testimonials,
+      ethnicCategories: Array.isArray(ethnicCategories) ? ethnicCategories : currentConfig.ethnicCategories,
       updatedAt: new Date().toISOString()
     };
 

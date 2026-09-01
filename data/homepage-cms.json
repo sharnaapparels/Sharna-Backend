@@ -1,26 +1,5 @@
 {
-  "heroSlides": [
-    {
-      "id": "slide-1",
-      "title": "WHERE TRADITION MEETS MODERN LUXURY",
-      "subtitle": "HANDWOVEN & HANDSPUN COTTON ATTIRE · CRAFTED FOR THE DISCERNING MUSE",
-      "linkPath": "/collections",
-      "buttonText": "DISCOVER COLLECTION",
-      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787937984/sharna_banners/suiciqhptu3z8fu1aleu.png",
-      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787867237/sharna_banners/lpq6ofqo6oxhuxxcotgi.png",
-      "desktopImageUrl": "/src/assets/hero-slide-1.png"
-    },
-    {
-      "id": "slide-3",
-      "title": "CELEBRITY CURATION · AS SEEN ON MUSES",
-      "subtitle": "EXPLORE STATEMENT PIECES DESIGNED FOR EVERY OCCASION",
-      "linkPath": "/collections",
-      "buttonText": "EXPLORE CELEBRITY LOOKS",
-      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787936573/sharna_banners/h0ljxnjenig5n7hiz4dx.png",
-      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787867230/sharna_banners/yslv2flhdtzcwvjc0t88.png",
-      "desktopImageUrl": "/src/assets/hero-slide-3.png"
-    }
-  ],
+  "heroSlides": [],
   "newArrivalsProductIds": [
     "cmt0hjmw20000vsm8huvbrryv",
     "cmt71n3ze0000vs2okv99zlph",
