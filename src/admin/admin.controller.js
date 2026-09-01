@@ -136,7 +136,15 @@ exports.getAllOrders = async (req, res) => {
       orderBy: { createdAt: 'desc' },
       include: {
         user: { select: { id: true, name: true, email: true, phone: true } },
-        items: { include: { product: true } }
+        items: {
+          include: {
+            product: {
+              include: {
+                images: true
+              }
+            }
+          }
+        }
       }
     });
     res.json({ success: true, orders });
@@ -161,7 +169,15 @@ exports.updateOrderStatus = async (req, res) => {
       data: updateData,
       include: {
         user: { select: { id: true, name: true, email: true, phone: true } },
-        items: { include: { product: true } }
+        items: {
+          include: {
+            product: {
+              include: {
+                images: true
+              }
+            }
+          }
+        }
       }
     });
 

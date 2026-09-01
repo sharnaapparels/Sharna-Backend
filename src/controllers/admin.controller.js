@@ -21,7 +21,18 @@ exports.blockUser = async (req, res) => {
 // GET /api/admin/orders
 exports.getAllOrders = async (req, res) => {
   const orders = await prisma.order.findMany({
-    include: { user: { select: { name: true, email: true } }, items: true },
+    include: {
+      user: { select: { name: true, email: true } },
+      items: {
+        include: {
+          product: {
+            include: {
+              images: true
+            }
+          }
+        }
+      }
+    },
     orderBy: { createdAt: 'desc' }
   });
   res.json({ success: true, orders });
