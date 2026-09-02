@@ -230,6 +230,29 @@ const sendEmailInvoice = async (email, orderDetails) => {
   const shippingAmount = Number(orderDetails.shippingAmount || 0);
   const subtotal = totalAmount - shippingAmount;
 
+  const resolveItemImage = (item) => {
+    if (!item) return 'https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862351/sharna_products/bhhjppaimu0ojppewehu.png';
+    if (typeof item.image === 'string' && item.image.startsWith('http')) return item.image;
+    if (Array.isArray(item.product?.images) && item.product.images.length > 0) {
+      const p = item.product.images.find(img => img.isPrimary) || item.product.images[0];
+      if (p?.url && p.url.startsWith('http')) return p.url;
+    }
+    if (typeof item.product?.image === 'string' && item.product.image.startsWith('http')) return item.product.image;
+    
+    // Keyword fallback for known catalog items to prevent broken images in Gmail
+    const titleLow = (item.title || item.product?.title || '').toLowerCase();
+    if (titleLow.includes('toga') || titleLow.includes('blush')) {
+      return 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=400&q=80';
+    }
+    if (titleLow.includes('sand') || titleLow.includes('beige')) {
+      return 'https://images.unsplash.com/photo-1554412933-514a83d2f3c8?auto=format&fit=crop&w=400&q=80';
+    }
+    if (titleLow.includes('reception') || titleLow.includes('bridal') || titleLow.includes('lehenga') || titleLow.includes('saree')) {
+      return 'https://res.cloudinary.com/fcmtpwwu/image/upload/v1787658311/sharna_products/sxeopgxcfbdev4pbj6w4.jpg';
+    }
+    return 'https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862351/sharna_products/bhhjppaimu0ojppewehu.png';
+  };
+
   const itemsRows = (orderDetails.items || []).map((item, index, arr) => {
     const rawTitle = item.title || item.product?.title || 'Luxury Designer Garment';
     const formattedTitle = capitalizeText(rawTitle);
@@ -237,7 +260,7 @@ const sendEmailInvoice = async (email, orderDetails) => {
     const colorStr = capitalizeText(item.color || 'Default');
     const itemPrice = Number(item.price || 0);
     const itemQty = Number(item.quantity || 1);
-    const itemImg = item.product?.images?.[0]?.url || item.image || 'https://sharna.in/src/assets/logo.png';
+    const itemImg = resolveItemImage(item);
     const isLast = index === arr.length - 1;
 
     return `
@@ -245,8 +268,8 @@ const sendEmailInvoice = async (email, orderDetails) => {
         <td style="padding: 14px 0; ${isLast ? '' : 'border-bottom: 1px solid #FAF0E4;'}">
           <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
             <tr>
-              <td width="58" valign="top" style="padding-right: 12px;">
-                <img src="${itemImg}" width="54" height="54" alt="${formattedTitle}" style="width: 54px; height: 54px; object-fit: cover; border-radius: 8px; border: 1px solid #EAE1D5; display: block;" />
+              <td width="64" valign="top" style="padding-right: 12px;">
+                <img src="${itemImg}" width="56" height="70" alt="${formattedTitle}" style="width: 56px; height: 70px; object-fit: cover; border-radius: 6px; border: 1px solid #EAE1D5; display: block;" />
               </td>
               <td valign="top" style="text-align: left;">
                 <div style="font-size: 14px; font-weight: 700; color: #1E1915; font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.35;">${formattedTitle}</div>
@@ -309,12 +332,12 @@ const sendEmailInvoice = async (email, orderDetails) => {
             <!-- MAIN CONTAINER CARD (Max 500px - Perfect Mobile & Desktop Fit) -->
             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" class="email-card" style="max-width: 500px; background-color: #FFFFFF; background: #FFFFFF linear-gradient(0deg, #FFFFFF 0%, #FFFFFF 100%); border-radius: 16px; border: 1px solid #EAE1D5; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
               
-              <!-- DARK CHARCOAL BRAND HEADER BANNER (ONLY DARK SECTION) -->
+              <!-- DARK CHARCOAL BRAND HEADER BANNER WITH OFFICIAL SHARNA LOGO -->
               <tr>
-                <td align="center" style="background-color: #181412; background: #181412 linear-gradient(0deg, #181412 0%, #181412 100%); padding: 38px 20px 34px; border-bottom: 3px solid #C5A86B;">
-                  <div style="color: #C5A86B !important; font-size: 14px; margin-bottom: 6px; letter-spacing: 0.3em;">❖</div>
-                  <h1 style="color: #C5A86B !important; font-family: Georgia, serif; margin: 0; letter-spacing: 0.28em; font-size: 32px; text-transform: uppercase; font-weight: 500; text-shadow: 0 2px 8px rgba(0,0,0,0.5);">SHARNA</h1>
-                  <div style="width: 40px; height: 1px; background-color: #C5A86B; margin: 10px auto 8px;"></div>
+                <td align="center" style="background-color: #181412; background: #181412 linear-gradient(0deg, #181412 0%, #181412 100%); padding: 32px 20px 28px; border-bottom: 3px solid #C5A86B;">
+                  <div style="color: #C5A86B !important; font-size: 13px; margin-bottom: 8px; letter-spacing: 0.3em;">❖</div>
+                  <img src="https://res.cloudinary.com/fcmtpwwu/image/upload/v1788374485/sharna_brand/sharna_official_logo.png" alt="SHARNA" width="160" style="width: 160px; max-width: 180px; height: auto; display: block; margin: 0 auto; filter: brightness(0) invert(1);" />
+                  <div style="width: 40px; height: 1px; background-color: #C5A86B; margin: 12px auto 8px;"></div>
                   <p style="font-size: 9.5px; color: #C5A86B !important; margin: 0; text-transform: uppercase; letter-spacing: 0.24em; font-family: 'Helvetica Neue', Arial, sans-serif; font-weight: 600; opacity: 0.95;">HANDCRAFTED ETHNIC LUXURY</p>
                 </td>
               </tr>

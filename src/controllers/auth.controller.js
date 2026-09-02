@@ -233,22 +233,52 @@ const findUserByIdentifier = async (rawIdentifier) => {
 // ─── SEND LOGIN OTP ─────────────────────────────────────────────────────────
 // POST /api/auth/send-otp
 exports.sendLoginOtp = async (req, res) => {
-  const { phone } = req.body;
+  const rawPhone = String(req.body.phone || '').trim();
 
-  if (!phone) {
-    return res.status(400).json({ success: false, message: 'Phone number is required' });
+  if (!rawPhone) {
+    return res.status(400).json({ success: false, message: 'WhatsApp mobile number is required' });
+  }
+
+  // Reject email addresses entered in WhatsApp login
+  if (rawPhone.includes('@')) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'WhatsApp login requires a mobile number only. Email sign-in is reserved for Admin and Password login.' 
+    });
+  }
+
+  const digitsOnly = rawPhone.replace(/\D/g, '');
+  if (digitsOnly.length < 10) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Please enter a valid 10-digit WhatsApp mobile number (e.g. 98000 00000).' 
+    });
   }
 
   // Check lockout before sending new OTP
-  const lockoutMsg = checkOtpLockout(phone);
+  const lockoutMsg = checkOtpLockout(rawPhone);
   if (lockoutMsg) {
     return res.status(429).json({ success: false, message: lockoutMsg });
   }
 
-  const user = await findUserByIdentifier(phone);
+  // STRICTLY find user by PHONE number (never by email in WhatsApp OTP login)
+  const tenDigit = digitsOnly.slice(-10);
+  const phoneVariations = Array.from(new Set([
+    rawPhone,
+    digitsOnly,
+    tenDigit,
+    `+91${tenDigit}`,
+    `91${tenDigit}`
+  ])).filter(Boolean);
+
+  const user = await prisma.user.findFirst({
+    where: {
+      phone: { in: phoneVariations }
+    }
+  });
 
   if (!user) {
-    return res.status(404).json({ success: false, message: 'No account found with this number. Please sign up first.' });
+    return res.status(404).json({ success: false, message: 'No registered account found with this phone number. Please sign up first.' });
   }
 
   if (user.isBlocked) {
@@ -266,29 +296,52 @@ exports.sendLoginOtp = async (req, res) => {
 
   // Log OTP in terminal for testing
   console.log(`\n=============================================`);
-  console.log(`[TESTING OTP] Login OTP for ${phone}: ${otp}`);
+  console.log(`[CUSTOMER WHATSAPP OTP] Login OTP for ${user.phone || rawPhone}: ${otp}`);
   console.log(`=============================================\n`);
 
-  await sendWhatsAppOTPText(user.phone || phone, otp);
+  await sendWhatsAppOTPText(user.phone || rawPhone, otp);
 
   res.json({
     success: true,
-    message: `OTP sent to WhatsApp number ${phone}`
+    message: `OTP sent to WhatsApp number ${user.phone || rawPhone}`
   });
 };
 
 // ─── LOGIN WITH OTP ─────────────────────────────────────────────────────────
 // POST /api/auth/login-otp
 exports.loginWithOtp = async (req, res) => {
-  const { phone, otp } = req.body;
+  const rawPhone = String(req.body.phone || '').trim();
+  const otp = String(req.body.otp || '').trim();
+
+  if (!rawPhone || !otp) {
+    return res.status(400).json({ success: false, message: 'Phone number and OTP are required' });
+  }
+
+  if (rawPhone.includes('@')) {
+    return res.status(400).json({ success: false, message: 'WhatsApp OTP requires a mobile number.' });
+  }
 
   // Check lockout
-  const lockoutMsg = checkOtpLockout(phone);
+  const lockoutMsg = checkOtpLockout(rawPhone);
   if (lockoutMsg) {
     return res.status(429).json({ success: false, message: lockoutMsg });
   }
 
-  const user = await findUserByIdentifier(phone);
+  const digitsOnly = rawPhone.replace(/\D/g, '');
+  const tenDigit = digitsOnly.slice(-10);
+  const phoneVariations = Array.from(new Set([
+    rawPhone,
+    digitsOnly,
+    tenDigit,
+    `+91${tenDigit}`,
+    `91${tenDigit}`
+  ])).filter(Boolean);
+
+  const user = await prisma.user.findFirst({
+    where: {
+      phone: { in: phoneVariations }
+    }
+  });
 
   if (!user || user.isBlocked) {
     return res.status(401).json({ success: false, message: 'Account not found or blocked' });
@@ -304,13 +357,13 @@ exports.loginWithOtp = async (req, res) => {
 
   const isMatch = await bcrypt.compare(otp, user.otp);
   if (!isMatch) {
-    const lockResult = registerFailedOtpAttempt(phone);
+    const lockResult = registerFailedOtpAttempt(rawPhone);
     const status = lockResult.isLocked ? 429 : 400;
     return res.status(status).json({ success: false, message: lockResult.message });
   }
 
   // Clear attempts on success
-  resetOtpAttempts(phone);
+  resetOtpAttempts(rawPhone);
 
   // Clear OTP after use
   const loggedUser = await prisma.user.update({
@@ -592,16 +645,21 @@ exports.getProfile = async (req, res) => {
 // ─── UPDATE PROFILE ───────────────────────────────────────────────────────────
 // PUT /api/auth/profile
 exports.updateProfile = async (req, res) => {
-  const data = {};
-  if (req.body.name) data.name = req.body.name;
-  if (req.body.password) data.password = await bcrypt.hash(req.body.password, 10);
+  try {
+    const data = {};
+    if (req.body.name) data.name = req.body.name.trim();
+    if (req.body.password) data.password = await bcrypt.hash(req.body.password, 10);
 
-  const user = await prisma.user.update({
-    where: { id: req.user.id },
-    data
-  });
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data
+    });
 
-  res.json({ success: true, user: formatUserResponse(user) });
+    res.json({ success: true, user: formatUserResponse(user) });
+  } catch (err) {
+    console.error("Update profile error:", err);
+    res.status(500).json({ success: false, message: err.message || 'Failed to update profile details.' });
+  }
 };
 
 // ─── RESEND OTP ──────────────────────────────────────────────────────────────

@@ -1,11 +1,23 @@
 {
-  "updatedAt": "2026-09-01T18:51:13.189Z",
+  "updatedAt": "2026-09-02T18:34:25.461Z",
   "heroSlides": [
     {
       "id": "test-slide-1",
       "title": "Test Live Banner",
-      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862351/sharna_products/bhhjppaimu0ojppewehu.png",
-      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862351/sharna_products/bhhjppaimu0ojppewehu.png"
+      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788288806/sharna_banners/gmfpwdzimmnyj4po1nq0.png",
+      "buttonText": "Discover collection",
+      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788288861/sharna_banners/rncoe7dmyksly25dvxia.png",
+      "desktopImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862351/sharna_products/bhhjppaimu0ojppewehu.png"
+    },
+    {
+      "id": "slide-1788288791462",
+      "title": "NEW LUXURY BANNER TITLE",
+      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788288819/sharna_banners/fsl01xev1699cxgknvoh.png",
+      "linkPath": "/collections",
+      "subtitle": "SUBTITLE / TAGLINE DESCRIPTION HERE",
+      "buttonText": "SHOP COLLECTION",
+      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788288870/sharna_banners/ug3pwmaz6fkahpcftaxv.png",
+      "desktopImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788288819/sharna_banners/fsl01xev1699cxgknvoh.png"
     }
   ],
   "testimonials": [
@@ -47,21 +59,21 @@
       "tag": "Indo-Western Edits",
       "link": "/shop?category=coord-sets",
       "name": "CO-ORD SETS",
-      "image": "/src/assets/ready-to-ship-2.png"
+      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788289027/sharna_products/nuvih2aypp52q1td7lcq.jpg"
     },
     {
       "id": "cat-3",
       "tag": "Festive Luxe",
       "link": "/shop?category=dresses",
       "name": "DRESSES & GOWNS",
-      "image": "/src/assets/festive-1.png"
+      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788289045/sharna_products/qeidbflb52istlrqxyd9.jpg"
     },
     {
       "id": "cat-4",
       "tag": "Everyday Ethnic",
       "link": "/shop?category=short-kurtis",
       "name": "SHORT KURTIS",
-      "image": "/src/assets/reception-1.png"
+      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788289065/sharna_products/iizde2d9uhgsj8r2x2ie.jpg"
     },
     {
       "id": "cat-5",
@@ -79,26 +91,24 @@
     }
   ],
   "bestSellersProductIds": [
-    "cmt0h3qgk0022vsacp4gnor1s",
-    "cmt0h3q6g001yvsac1mo5r3qo",
-    "cmt0h3pw5001uvsacl0cjl4n7",
-    "cmt72xrvp0000pd014vcdeyzm"
+    "cmt72xrvp0000pd014vcdeyzm",
+    "cmt79bxnc0000vsv8bc9avcis",
+    "cmtk95alj001coa01owbb0v29"
   ],
   "newArrivalsProductIds": [
     "cmt0hjmw20000vsm8huvbrryv",
     "cmt71n3ze0000vs2okv99zlph",
     "cmt72xrvp0000pd014vcdeyzm",
-    "cmt79bxnc0000vsv8bc9avcis"
+    "cmt79bxnc0000vsv8bc9avcis",
+    "cmtk95alj001coa01owbb0v29"
   ],
   "readyToShipProductIds": [
     "cmt0hjmw20000vsm8huvbrryv",
-    "cmt0h3qgk0022vsacp4gnor1s",
-    "cmt0h3q6g001yvsac1mo5r3qo",
-    "cmt0h3pls001qvsac2dvqe4h6"
+    "cmtk95alj001coa01owbb0v29"
   ],
   "celebrityClosetProductIds": [
-    "cmt0h3qgk0022vsacp4gnor1s",
-    "cmt0h3q6g001yvsac1mo5r3qo",
-    "cmt0h3pw5001uvsacl0cjl4n7"
+    "cmt79bxnc0000vsv8bc9avcis",
+    "cmt72xrvp0000pd014vcdeyzm",
+    "cmt71n3ze0000vs2okv99zlph"
   ]
 }

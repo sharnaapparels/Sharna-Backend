@@ -1,8 +1,35 @@
 const prisma = require('../config/database');
 const bcrypt = require('bcrypt');
+const { cloudinary } = require('../config/cloudinary');
 const { clearProductCache } = require('../utils/productCache');
 const { clearCMSCache } = require('../cms/cms.controller');
 const { sendPasswordResetEmail, sendResendEmail } = require('../utils/email.service');
+
+const processProductImages = async (images) => {
+  if (!Array.isArray(images) || images.length === 0) return [];
+  const processed = [];
+  for (let idx = 0; idx < images.length; idx++) {
+    const img = images[idx];
+    let imageUrl = typeof img === 'string' ? img : (img.url || img.src || '');
+    if (!imageUrl) continue;
+
+    if (imageUrl.startsWith('data:image')) {
+      try {
+        const uploadRes = await cloudinary.uploader.upload(imageUrl, {
+          folder: 'sharna_products'
+        });
+        if (uploadRes && uploadRes.secure_url) {
+          imageUrl = uploadRes.secure_url;
+        }
+      } catch (err) {
+        console.warn('Base64 auto-upload to Cloudinary warning:', err.message);
+      }
+    }
+
+    processed.push({ url: imageUrl, isPrimary: idx === 0 });
+  }
+  return processed;
+};
 
 // GET /api/admin/stats
 exports.getDashboardStats = async (req, res) => {
@@ -287,11 +314,31 @@ exports.getAllProducts = async (req, res) => {
       const dbSizes = [...new Set((p.variants || []).map(v => v.size).filter(Boolean))];
       const mainColor = dbColors[0] || 'Beige';
 
+      const variantStocks = (p.variants || []).map(v => v.stock).filter(s => s !== undefined && s !== null);
+      const stockVal = variantStocks.length > 0 ? variantStocks[0] : 50;
+      const totalStock = (p.variants || []).reduce((acc, v) => acc + (Number(v.stock) || 0), 0);
+
+      const colStr = (p.collection || '').toLowerCase();
+      const isFestive = colStr.includes('festive');
+      const isNewArrival = colStr.includes('new-arrivals') || colStr.includes('new arrival');
+      const isReadyToShip = colStr.includes('ready-to-ship') || colStr.includes('ready');
+      const isCollectionsPage = colStr.includes('plus-size') || colStr.includes('curve') || p.category === 'plus-size-edit';
+
       return {
         ...p,
         color: mainColor,
         colors: dbColors.length > 0 ? dbColors : ['Beige'],
-        sizes: dbSizes.length > 0 ? dbSizes : ['XS', 'S', 'M', 'L', 'XL', '2XL']
+        sizes: dbSizes.length > 0 ? dbSizes : ['XS', 'S', 'M', 'L', 'XL', '2XL'],
+        stock: stockVal,
+        totalStock: totalStock,
+        isFestive,
+        isFestivePage: isFestive,
+        isNewArrival,
+        isNewArrivalsPage: isNewArrival,
+        isReadyToShip,
+        isReadyToShipPage: isReadyToShip,
+        isCollectionsPage,
+        isPlusSize: isCollectionsPage
       };
     });
 
@@ -304,7 +351,7 @@ exports.getAllProducts = async (req, res) => {
 
 // POST /api/admin/products
 exports.createProduct = async (req, res) => {
-  const { title, description, price, originalPrice, category, collection, isNewArrival, isReadyToShip, isFeatured, stock, images, color, colors, sizes } = req.body;
+  const { title, description, price, originalPrice, category, collection, isNewArrival, isReadyToShip, isFestive, isFestivePage, isNewArrivalsPage, isReadyToShipPage, isCollectionsPage, isFeatured, stock, images, color, colors, sizes } = req.body;
 
   if (!title || !price || !category) {
     return res.status(400).json({ success: false, message: 'Title, price, and category are required' });
@@ -313,12 +360,19 @@ exports.createProduct = async (req, res) => {
   try {
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + '-' + Date.now();
 
-    const formattedImages = Array.isArray(images) ? images.map((img, idx) => {
-      const imageUrl = typeof img === 'string' ? img : (img.url || img.src || '');
-      return { url: imageUrl, isPrimary: idx === 0 };
-    }).filter(i => i.url) : [];
+    const formattedImages = await processProductImages(images);
 
-    const computedCollection = collection || (isNewArrival ? 'new-arrivals' : (isReadyToShip ? 'ready-to-ship' : 'festive-collection'));
+    const cols = [];
+    if (isFestive || isFestivePage) cols.push('festive-collection');
+    if (isNewArrival || isNewArrivalsPage) cols.push('new-arrivals');
+    if (isReadyToShip || isReadyToShipPage) cols.push('ready-to-ship');
+    if (isCollectionsPage) cols.push('plus-size-edit');
+    if (collection && typeof collection === 'string') {
+      collection.split(',').map(s => s.trim()).filter(Boolean).forEach(c => {
+        if (!cols.includes(c)) cols.push(c);
+      });
+    }
+    const computedCollection = cols.join(',');
 
     const product = await prisma.product.create({
       data: {
@@ -328,7 +382,7 @@ exports.createProduct = async (req, res) => {
         price: parseFloat(price),
         salePrice: originalPrice ? parseFloat(originalPrice) : null,
         category,
-        collection: computedCollection,
+        collection: computedCollection || null,
         isFeatured: isFeatured || false,
         isPublished: true,  // Always publish products created from admin
         images: formattedImages.length > 0 ? { create: formattedImages } : undefined
@@ -337,7 +391,8 @@ exports.createProduct = async (req, res) => {
     });
 
     console.log(`✅ [PRODUCT CREATED IN DB]: ${product.title} (ID: ${product.id})`);
-    await saveProductVariants(product.id, colors, sizes, stock);
+    const numericStock = stock !== undefined ? parseInt(stock) : 50;
+    await saveProductVariants(product.id, colors, sizes, numericStock);
     clearProductCache();
     if (clearCMSCache) clearCMSCache();
 
@@ -347,13 +402,18 @@ exports.createProduct = async (req, res) => {
       success: true,
       product: {
         ...product,
-        isNewArrival: isNewArrival || computedCollection === 'new-arrivals',
-        isReadyToShip: isReadyToShip || computedCollection === 'ready-to-ship',
+        isFestive: cols.includes('festive-collection'),
+        isFestivePage: cols.includes('festive-collection'),
+        isNewArrival: cols.includes('new-arrivals'),
+        isNewArrivalsPage: cols.includes('new-arrivals'),
+        isReadyToShip: cols.includes('ready-to-ship'),
+        isReadyToShipPage: cols.includes('ready-to-ship'),
+        isCollectionsPage: cols.includes('plus-size-edit'),
         color: color || (Array.isArray(colors) && colors[0]) || 'Beige',
         colors: Array.isArray(colors) && colors.length > 0 ? colors : (color ? [color] : ['Beige']),
         colorImages: colorImages || {},
         sizes: Array.isArray(sizes) ? sizes : ['XS', 'S', 'M', 'L', 'XL'],
-        stock: stock ? parseInt(stock) : 50
+        stock: numericStock
       }
     });
   } catch (err) {
@@ -365,10 +425,26 @@ exports.createProduct = async (req, res) => {
 // PUT /api/admin/products/:id
 exports.updateProduct = async (req, res) => {
   const { id } = req.params;
-  const { title, description, price, originalPrice, category, collection, isNewArrival, isReadyToShip, isFeatured, stock, color, colors, sizes, images } = req.body;
+  const { title, description, price, originalPrice, category, collection, isNewArrival, isReadyToShip, isFestive, isFestivePage, isNewArrivalsPage, isReadyToShipPage, isCollectionsPage, isFeatured, stock, color, colors, sizes, images } = req.body;
 
   try {
-    const computedCollection = collection || (isNewArrival !== undefined ? (isNewArrival ? 'new-arrivals' : 'festive-collection') : (isReadyToShip ? 'ready-to-ship' : undefined));
+    const cols = [];
+    if (isFestive === true || isFestivePage === true) cols.push('festive-collection');
+    if (isNewArrival === true || isNewArrivalsPage === true) cols.push('new-arrivals');
+    if (isReadyToShip === true || isReadyToShipPage === true) cols.push('ready-to-ship');
+    if (isCollectionsPage === true) cols.push('plus-size-edit');
+    if (collection && typeof collection === 'string') {
+      collection.split(',').map(s => s.trim()).filter(Boolean).forEach(c => {
+        if (!cols.includes(c)) {
+          if (c === 'festive-collection' && (isFestive === false || isFestivePage === false)) return;
+          if (c === 'new-arrivals' && (isNewArrival === false || isNewArrivalsPage === false)) return;
+          if (c === 'ready-to-ship' && (isReadyToShip === false || isReadyToShipPage === false)) return;
+          if (c === 'plus-size-edit' && isCollectionsPage === false) return;
+          cols.push(c);
+        }
+      });
+    }
+    const computedCollection = cols.join(',');
 
     const updateData = {};
     if (title !== undefined) updateData.title = title;
@@ -376,15 +452,12 @@ exports.updateProduct = async (req, res) => {
     if (price !== undefined) updateData.price = parseFloat(price);
     if (originalPrice !== undefined) updateData.salePrice = parseFloat(originalPrice);
     if (category !== undefined) updateData.category = category;
-    if (computedCollection !== undefined) updateData.collection = computedCollection;
+    updateData.collection = computedCollection || null;
     if (isFeatured !== undefined) updateData.isFeatured = isFeatured;
     updateData.isPublished = true; // Always publish when saving from admin panel
 
     if (Array.isArray(images) && images.length > 0) {
-      const formattedImages = images.map((img, idx) => {
-        const imageUrl = typeof img === 'string' ? img : (img.url || img.src || '');
-        return { url: imageUrl, isPrimary: idx === 0 };
-      }).filter(i => i.url);
+      const formattedImages = await processProductImages(images);
 
       if (formattedImages.length > 0) {
         await prisma.productImage.deleteMany({ where: { productId: id } }).catch(() => {});
@@ -418,7 +491,7 @@ exports.updateProduct = async (req, res) => {
           price: price ? parseFloat(price) : 999,
           salePrice: originalPrice ? parseFloat(originalPrice) : null,
           category: category || 'suit-sets',
-          collection: computedCollection || 'festive-collection',
+          collection: computedCollection || null,
           isFeatured: isFeatured || false,
           isPublished: true,  // Always publish products created from admin
           images: formattedImages.length > 0 ? { create: formattedImages } : undefined
@@ -428,7 +501,8 @@ exports.updateProduct = async (req, res) => {
     }
 
     console.log(`✅ [PRODUCT SAVED TO DB]: ${product.title} (ID: ${product.id})`);
-    await saveProductVariants(product.id, colors, sizes, stock);
+    const numericStock = stock !== undefined ? parseInt(stock) : 50;
+    await saveProductVariants(product.id, colors, sizes, numericStock);
     clearProductCache();
     if (clearCMSCache) clearCMSCache();
 
@@ -438,12 +512,17 @@ exports.updateProduct = async (req, res) => {
       success: true,
       product: {
         ...product,
-        isNewArrival: isNewArrival !== undefined ? isNewArrival : product.collection === 'new-arrivals',
-        isReadyToShip: isReadyToShip !== undefined ? isReadyToShip : product.collection === 'ready-to-ship',
+        isFestive: cols.includes('festive-collection'),
+        isFestivePage: cols.includes('festive-collection'),
+        isNewArrival: cols.includes('new-arrivals'),
+        isNewArrivalsPage: cols.includes('new-arrivals'),
+        isReadyToShip: cols.includes('ready-to-ship'),
+        isReadyToShipPage: cols.includes('ready-to-ship'),
+        isCollectionsPage: cols.includes('plus-size-edit'),
         color: color || (Array.isArray(colors) && colors[0]) || 'Beige',
         colors: Array.isArray(colors) && colors.length > 0 ? colors : (color ? [color] : ['Beige']),
         colorImages: colorImages || {},
-        stock: stock !== undefined ? parseInt(stock) : 50
+        stock: numericStock
       }
     });
   } catch (err) {

@@ -87,21 +87,47 @@ exports.getAllProducts = async (req, res) => {
       variantMap[v.productId].push({ id: v.id, size: v.size, color: v.color, stock: v.stock });
     });
 
-    const products = baseProducts.map(p => ({
-      ...p,
-      images: imageMap[p.id] || [],
-      variants: variantMap[p.id] || []
-    }));
+    const products = baseProducts.map(p => {
+      const pVariants = variantMap[p.id] || [];
+      const totalStock = pVariants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+      const repStock = pVariants.length > 0 ? (pVariants[0].stock !== undefined ? pVariants[0].stock : totalStock) : 50;
 
-    const sanitizedProducts = products.map(p => ({
-      ...p,
-      images: (p.images || []).map(img => ({
-        ...img,
-        url: typeof img.url === 'string' && img.url.startsWith('data:image')
-          ? ''
-          : img.url
-      }))
-    }));
+      return {
+        ...p,
+        images: imageMap[p.id] || [],
+        variants: pVariants,
+        stock: repStock,
+        totalStock
+      };
+    });
+
+    const sanitizedProducts = products.map(p => {
+      const colStr = (p.collection || '').toLowerCase();
+      const isFestive = colStr.includes('festive');
+      const isNewArrival = colStr.includes('new-arrivals') || colStr.includes('new arrival');
+      const isReadyToShip = colStr.includes('ready-to-ship') || colStr.includes('ready');
+      const isCollectionsPage = colStr.includes('plus-size') || colStr.includes('curve') || p.category === 'plus-size-edit';
+
+      const pVariants = p.variants || [];
+      const dbSizes = [...new Set(pVariants.map(v => v.size).filter(Boolean))];
+      const dbColors = [...new Set(pVariants.map(v => v.color).filter(Boolean))];
+
+      return {
+        ...p,
+        stock: p.stock !== undefined ? p.stock : 50,
+        isFestive,
+        isFestivePage: isFestive,
+        isNewArrival,
+        isNewArrivalsPage: isNewArrival,
+        isReadyToShip,
+        isReadyToShipPage: isReadyToShip,
+        isCollectionsPage,
+        isPlusSize: isCollectionsPage,
+        sizes: dbSizes.length > 0 ? dbSizes : ['XS', 'S', 'M', 'L', 'XL'],
+        colors: dbColors.length > 0 ? dbColors : ['Beige'],
+        images: p.images || []
+      };
+    });
 
     const totalDbMs = tProdDur + tImgDur + tVarDur;
     const result = { success: true, products: sanitizedProducts, total: sanitizedProducts.length, page: 1, pages: 1 };
@@ -132,72 +158,40 @@ exports.getProductBySlug = async (req, res) => {
   const cachedData = getCache(`/api/products/${lowerParam}`) || getCache(`/api/products/${rawParam}`);
   const tCacheDur = Date.now() - tCacheStart;
   console.log(`[DB-DIAG] /api/products/:slug | cache lookup: ${tCacheDur}ms`);
-
   if (cachedData) {
-    console.log(`[PERF] /api/products/:slug | cache: HIT | total: ${Date.now() - t0}ms`);
     return res.json(cachedData);
   }
 
-  const baseSelect = {
-    id: true,
-    title: true,
-    slug: true,
-    description: true,
-    price: true,
-    salePrice: true,
-    category: true,
-    collection: true,
-    fabric: true,
-    care: true,
-    isPublished: true,
-    isFeatured: true,
-    createdAt: true,
-    updatedAt: true
-  };
-
   try {
-    let product = null;
-    const isCuidLike = /^c[a-z0-9]{20,}$/i.test(rawParam);
-
-    // 2. Measure single-index base product lookup
+    // 2. Optimized direct fetch by slug or ID in single lookup
+    const isCuidOrUuid = /^[a-z0-9]{20,40}$/i.test(rawParam);
     const tProdStart = Date.now();
-    if (isCuidLike) {
-      product = await prisma.product.findUnique({
-        where: { id: rawParam },
-        select: baseSelect
+    let product = await prisma.product.findUnique({
+      where: isCuidOrUuid ? { id: rawParam } : { slug: rawParam }
+    });
+
+    if (!product && !isCuidOrUuid) {
+      product = await prisma.product.findFirst({
+        where: { slug: { equals: rawParam, mode: 'insensitive' } }
       });
     }
-
-    if (!product) {
-      product = await prisma.product.findUnique({
-        where: { slug: lowerParam },
-        select: baseSelect
-      });
-    }
-
-    if (!product && !isCuidLike) {
-      product = await prisma.product.findUnique({
-        where: { id: rawParam },
-        select: baseSelect
-      }).catch(() => null);
-    }
-    const tProdDur = Date.now() - tProdStart;
-    console.log(`[DB-DIAG] /api/products/:slug | product.findUnique (base lookup): ${tProdDur}ms`);
 
     if (!product) {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
+    const tProdDur = Date.now() - tProdStart;
 
-    // 3. Concurrently fetch independent relations (images, variants, reviews)
+    // 3. Parallel fetch relations
     const tRelStart = Date.now();
     const [images, variants, reviews] = await Promise.all([
       prisma.productImage.findMany({
         where: { productId: product.id },
-        select: { id: true, url: true, isPrimary: true }
+        select: { id: true, url: true, isPrimary: true },
+        orderBy: { isPrimary: 'desc' }
       }),
       prisma.productVariant.findMany({
         where: { productId: product.id },
-        select: { id: true, size: true, color: true, colorHex: true, stock: true, sku: true }
+        select: { id: true, size: true, color: true, stock: true, sku: true }
       }),
       prisma.review.findMany({
         where: { productId: product.id, isVisible: true },
@@ -216,8 +210,32 @@ exports.getProductBySlug = async (req, res) => {
     const tRelDur = Date.now() - tRelStart;
     console.log(`[DB-DIAG] /api/products/:slug | concurrent relations (images/variants/reviews): ${tRelDur}ms (images: ${images.length}, variants: ${variants.length}, reviews: ${reviews.length})`);
 
+    const totalStock = (variants || []).reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+    const repStock = (variants && variants.length > 0) ? (variants[0].stock !== undefined ? variants[0].stock : totalStock) : 50;
+
+    const colStr = (product.collection || '').toLowerCase();
+    const isFestive = colStr.includes('festive');
+    const isNewArrival = colStr.includes('new-arrivals') || colStr.includes('new arrival');
+    const isReadyToShip = colStr.includes('ready-to-ship') || colStr.includes('ready');
+    const isCollectionsPage = colStr.includes('plus-size') || colStr.includes('curve') || product.category === 'plus-size-edit';
+
+    const dbSizes = [...new Set((variants || []).map(v => v.size).filter(Boolean))];
+    const dbColors = [...new Set((variants || []).map(v => v.color).filter(Boolean))];
+
     const fullProduct = {
       ...product,
+      stock: repStock,
+      totalStock,
+      isFestive,
+      isFestivePage: isFestive,
+      isNewArrival,
+      isNewArrivalsPage: isNewArrival,
+      isReadyToShip,
+      isReadyToShipPage: isReadyToShip,
+      isCollectionsPage,
+      isPlusSize: isCollectionsPage,
+      sizes: dbSizes.length > 0 ? dbSizes : ['XS', 'S', 'M', 'L', 'XL'],
+      colors: dbColors.length > 0 ? dbColors : ['Beige'],
       images,
       variants,
       reviews

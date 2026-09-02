@@ -153,7 +153,11 @@ const triggerInvoiceNotifications = async (orderId) => {
         user: true,
         items: {
           include: {
-            product: true
+            product: {
+              include: {
+                images: true
+              }
+            }
           }
         }
       }
@@ -194,7 +198,8 @@ const triggerInvoiceNotifications = async (orderId) => {
         price: item.price,
         quantity: item.quantity,
         size: item.size || 'S',
-        color: item.color || 'Default'
+        color: item.color || 'Default',
+        image: item.product?.images?.find(img => img.isPrimary)?.url || item.product?.images?.[0]?.url || item.product?.image || ''
       }))
     };
 
