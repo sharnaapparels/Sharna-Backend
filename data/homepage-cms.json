@@ -1,10 +1,10 @@
 {
-  "updatedAt": "2026-09-02T18:34:25.461Z",
+  "updatedAt": "2026-09-02T19:36:00.398Z",
   "heroSlides": [
     {
       "id": "test-slide-1",
       "title": "Test Live Banner",
-      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788288806/sharna_banners/gmfpwdzimmnyj4po1nq0.png",
+      "imageUrl": "blob:http://localhost:5173/9246c6c4-321f-48c0-a8a0-4877bb5315a2",
       "buttonText": "Discover collection",
       "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788288861/sharna_banners/rncoe7dmyksly25dvxia.png",
       "desktopImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862351/sharna_products/bhhjppaimu0ojppewehu.png"
@@ -12,7 +12,7 @@
     {
       "id": "slide-1788288791462",
       "title": "NEW LUXURY BANNER TITLE",
-      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788288819/sharna_banners/fsl01xev1699cxgknvoh.png",
+      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788376823/sharna_products/zqn0cqtrjcwannv5djz2.png",
       "linkPath": "/collections",
       "subtitle": "SUBTITLE / TAGLINE DESCRIPTION HERE",
       "buttonText": "SHOP COLLECTION",
@@ -99,8 +99,7 @@
     "cmt0hjmw20000vsm8huvbrryv",
     "cmt71n3ze0000vs2okv99zlph",
     "cmt72xrvp0000pd014vcdeyzm",
-    "cmt79bxnc0000vsv8bc9avcis",
-    "cmtk95alj001coa01owbb0v29"
+    "cmt79bxnc0000vsv8bc9avcis"
   ],
   "readyToShipProductIds": [
     "cmt0hjmw20000vsm8huvbrryv",
