@@ -5,6 +5,8 @@ const fs = require('fs');
 const { cloudinary, upload, uploadsDir } = require('../config/cloudinary');
 const { protect, adminOnly, optionalAuth } = require('../middleware/auth.middleware');
 
+const sharp = require('sharp');
+
 const uploadFileToCloudinaryOrDisk = async (req, file, folderName = 'sharna_uploads') => {
   if (!file || !file.buffer) return null;
 
@@ -24,14 +26,58 @@ const uploadFileToCloudinaryOrDisk = async (req, file, folderName = 'sharna_uplo
     }
   }
 
-  // 2. Fallback to local disk storage
-  const filename = `${folderName}-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname) || '.png'}`;
-  const filePath = path.join(uploadsDir, filename);
-  fs.writeFileSync(filePath, file.buffer);
+  // 2. Fallback to local disk storage with Sharp AVIF & WebP optimization
+  const timestamp = Date.now();
+  const rand = Math.round(Math.random() * 1e9);
+  const baseName = `${folderName}-${timestamp}-${rand}`;
 
-  const protocol = req.protocol || 'http';
-  const host = req.get('host') || 'localhost:5008';
-  return `${protocol}://${host}/uploads/${filename}`;
+  const masterPath = path.join(uploadsDir, `${baseName}-master${path.extname(file.originalname) || '.png'}`);
+  const webpPath = path.join(uploadsDir, `${baseName}.webp`);
+  const avifPath = path.join(uploadsDir, `${baseName}.avif`);
+  const mobileWebpPath = path.join(uploadsDir, `${baseName}-mobile.webp`);
+  const mobileAvifPath = path.join(uploadsDir, `${baseName}-mobile.avif`);
+
+  // Preserve raw master
+  try {
+    fs.writeFileSync(masterPath, file.buffer);
+  } catch (_) {}
+
+  try {
+    // Generate desktop WebP (1920px, 86%)
+    await sharp(file.buffer)
+      .resize({ width: 1920, withoutEnlargement: true })
+      .webp({ quality: 86, smartSubsample: true })
+      .toFile(webpPath);
+
+    // Generate desktop AVIF (1920px, 85%)
+    await sharp(file.buffer)
+      .resize({ width: 1920, withoutEnlargement: true })
+      .avif({ quality: 85, chromaSubsampling: '4:4:4' })
+      .toFile(avifPath);
+
+    // Generate mobile WebP (900px, 86%)
+    await sharp(file.buffer)
+      .resize({ width: 900, withoutEnlargement: true })
+      .webp({ quality: 86, smartSubsample: true })
+      .toFile(mobileWebpPath);
+
+    // Generate mobile AVIF (900px, 85%)
+    await sharp(file.buffer)
+      .resize({ width: 900, withoutEnlargement: true })
+      .avif({ quality: 85, chromaSubsampling: '4:4:4' })
+      .toFile(mobileAvifPath);
+
+    const protocol = req.protocol || 'http';
+    const host = req.get('host') || 'localhost:5008';
+    return `${protocol}://${host}/uploads/${baseName}.webp`;
+  } catch (optErr) {
+    console.warn('Sharp optimization fallback to raw png:', optErr.message);
+    const fallbackPath = path.join(uploadsDir, `${baseName}.png`);
+    fs.writeFileSync(fallbackPath, file.buffer);
+    const protocol = req.protocol || 'http';
+    const host = req.get('host') || 'localhost:5008';
+    return `${protocol}://${host}/uploads/${baseName}.png`;
+  }
 };
 
 // Upload single image (Admin only)

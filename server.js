@@ -109,7 +109,74 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
 const path = require('path');
-app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
+const fs = require('fs');
+const sharp = require('sharp');
+
+// ── Smart Dynamic Image Transcoding Middleware for /uploads ──
+app.use('/uploads', async (req, res, next) => {
+  const reqPath = req.path;
+  const ext = path.extname(reqPath).toLowerCase();
+  
+  if (!['.png', '.jpg', '.jpeg', '.webp', '.avif'].includes(ext)) {
+    return next();
+  }
+
+  const baseName = path.basename(reqPath, ext);
+  const uploadsDir = path.join(__dirname, 'public/uploads');
+  const requestedFile = path.join(uploadsDir, reqPath);
+  const accept = req.headers.accept || '';
+
+  const prefersAvif = accept.includes('image/avif');
+  const prefersWebp = accept.includes('image/webp');
+  
+  const avifFile = path.join(uploadsDir, `${baseName}.avif`);
+  const webpFile = path.join(uploadsDir, `${baseName}.webp`);
+
+  // 1. Serve AVIF derivative if available and browser supports it
+  if (prefersAvif && fs.existsSync(avifFile)) {
+    res.type('image/avif');
+    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    return res.sendFile(avifFile);
+  }
+
+  // 2. Serve WebP derivative if available and browser supports it
+  if (prefersWebp && fs.existsSync(webpFile)) {
+    res.type('image/webp');
+    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    return res.sendFile(webpFile);
+  }
+
+  // 3. If requested file is a large PNG/JPG (> 400KB), auto-serve/transcode WebP
+  if (fs.existsSync(requestedFile)) {
+    try {
+      const stat = fs.statSync(requestedFile);
+      if (stat.size > 400 * 1024) {
+        if (fs.existsSync(webpFile)) {
+          res.type('image/webp');
+          res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+          return res.sendFile(webpFile);
+        }
+        // Transcode on the fly
+        await sharp(requestedFile)
+          .resize({ width: 1920, withoutEnlargement: true })
+          .webp({ quality: 86, smartSubsample: true })
+          .toFile(webpFile);
+        res.type('image/webp');
+        res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+        return res.sendFile(webpFile);
+      }
+    } catch (e) {
+      console.warn('Upload image stream fallback:', e.message);
+    }
+  }
+
+  next();
+});
+
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads'), {
+  maxAge: '7d',
+  immutable: true
+}));
 
 // Disable ETag globally — prevents 304 "Not Modified" on all API routes
 app.set('etag', false);

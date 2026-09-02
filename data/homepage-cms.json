@@ -4,9 +4,9 @@
     {
       "id": "test-slide-1",
       "title": "Test Live Banner",
-      "imageUrl": "http://localhost:5008/uploads/sharna_products-1788380371102-710439210.png",
+      "imageUrl": "http://localhost:5008/uploads/sharna_products-1788380371102-710439210.webp",
       "buttonText": "Discover collection",
-      "mobileImageUrl": "http://localhost:5008/uploads/sharna_products-1788380377410-489337623.png",
+      "mobileImageUrl": "http://localhost:5008/uploads/sharna_products-1788380377410-489337623.webp",
       "desktopImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862351/sharna_products/bhhjppaimu0ojppewehu.png"
     },
     {
