@@ -471,6 +471,75 @@ const sendPasswordResetEmail = async (email, otpCode) => {
 };
 
 /**
+ * Admin Two-Factor Authentication (2FA) Security OTP Email Template
+ */
+const sendAdmin2FAEmail = async (email, otpCode, adminName = 'Administrator') => {
+  if (!email) return;
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>SHARNA Admin Portal - 2FA Security Code</title>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #1e1915; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+      
+      <div style="max-width: 520px; margin: 30px auto; background-color: #ffffff; border-radius: 16px; border: 1px solid #c5a86b; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+        
+        <!-- Luxury Header Banner -->
+        <div style="background-color: #181412; padding: 30px 20px; text-align: center; border-bottom: 2px solid #c5a86b;">
+          <h1 style="color: #c5a86b; font-family: 'Cinzel', Georgia, serif; margin: 0; letter-spacing: 0.25em; font-size: 26px; text-transform: uppercase;">SHARNA</h1>
+          <p style="font-size: 10px; color: #FAF7F2; margin: 6px 0 0 0; text-transform: uppercase; letter-spacing: 0.2em;">ADMINISTRATOR PORTAL SECURITY</p>
+        </div>
+
+        <div style="padding: 35px 30px; text-align: center;">
+          
+          <div style="display: inline-block; padding: 6px 16px; background-color: #FAF4EB; border: 1px solid #EAE1D5; border-radius: 20px; font-size: 11px; font-weight: 700; color: #8C6B28; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 18px;">
+            🔒 TWO-FACTOR AUTHENTICATION (2FA)
+          </div>
+
+          <h2 style="color: #1e1915; font-size: 20px; margin: 0 0 10px 0; font-weight: 600;">Admin Login Verification</h2>
+          <p style="font-size: 13.5px; color: #5C4E46; line-height: 1.5; margin: 0 0 25px 0;">
+            Hello <strong>${adminName}</strong>,<br>
+            A login attempt was initiated for your SHARNA Administrator Account. Use the one-time security code below to complete authentication:
+          </p>
+
+          <!-- OTP Box -->
+          <div style="background-color: #FAF4EB; border: 2px dashed #c5a86b; border-radius: 12px; padding: 22px 15px; margin: 0 auto 25px auto; max-width: 340px;">
+            <span style="font-size: 11px; color: #8C6B28; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; display: block; margin-bottom: 8px;">YOUR 6-DIGIT 2FA CODE</span>
+            <div style="font-size: 34px; font-weight: 800; letter-spacing: 0.3em; color: #181412; font-family: 'Courier New', Courier, monospace;">
+              ${otpCode}
+            </div>
+            <span style="font-size: 11px; color: #888; display: block; margin-top: 8px;">Valid for 10 minutes • Single use only</span>
+          </div>
+
+          <p style="font-size: 12px; color: #888888; line-height: 1.5; margin: 0;">
+            ⚠️ If you did not attempt to sign in to the SHARNA Admin Portal, please secure your account immediately or notify your system administrator.
+          </p>
+
+        </div>
+
+        <!-- Footer -->
+        <div style="background-color: #FAF7F2; padding: 18px; text-align: center; border-top: 1px solid #EAE1D5; font-size: 11px; color: #7A6960;">
+          <p style="margin: 0; font-weight: 600; color: #1e1915;">SHARNA ETHNIC WEAR SECURITY</p>
+          <p style="margin: 4px 0 0 0;">Automated Security Dispatch • Please do not reply</p>
+        </div>
+
+      </div>
+
+    </body>
+    </html>
+  `;
+
+  return sendResendEmail({
+    to: email,
+    subject: `🔐 [${otpCode}] SHARNA Admin Portal 2FA Verification Code`,
+    html: htmlContent
+  });
+};
+
+/**
  * Abandoned Wishlist Reminder Email Template
  */
 const sendWishlistReminderEmail = async (email, { name, items = [] }) => {
@@ -570,5 +639,6 @@ module.exports = {
   sendResendEmail,
   sendEmailInvoice,
   sendPasswordResetEmail,
+  sendAdmin2FAEmail,
   sendWishlistReminderEmail
 };

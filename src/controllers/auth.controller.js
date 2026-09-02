@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const prisma = require('../config/database');
 const { sendWhatsAppOTPText } = require('../utils/whatsapp.service');
+const { sendAdmin2FAEmail, sendPasswordResetEmail } = require('../utils/email.service');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -362,6 +363,55 @@ exports.login = async (req, res) => {
     return res.status(401).json({ success: false, message: 'Incorrect password. Please try again.' });
   }
 
+  // ─── ADMIN 2-FACTOR AUTHENTICATION (2FA) VIA EMAIL ──────────────────────────
+  const isAdminAccount = user.role === 'ADMIN' || [
+    'sharnaapparels@gmail.com',
+    'priyanshulokhande72@gmail.com',
+    'chetna@sharna.com',
+    'swati@sharna.com'
+  ].includes(user.email?.toLowerCase());
+
+  if (isAdminAccount && user.email) {
+    const otp = generateOTP();
+    const hashedOtp = await bcrypt.hash(otp, 10);
+    const otpExpires = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        otp: hashedOtp,
+        otpExpires,
+        otpPurpose: 'LOGIN'
+      }
+    });
+
+    console.log(`\n=============================================`);
+    console.log(`[ADMIN 2FA EMAIL OTP] Dispatched to ${user.email}: ${otp}`);
+    console.log(`=============================================\n`);
+
+    try {
+      await sendAdmin2FAEmail(user.email, otp, user.name || 'Administrator');
+    } catch (e) {
+      console.warn('⚠️ Admin 2FA email dispatch warning:', e.message);
+    }
+
+    const maskEmail = (emailStr) => {
+      if (!emailStr) return '';
+      const [local, domain] = emailStr.split('@');
+      if (!domain) return emailStr;
+      const maskedLocal = local.length > 2 ? local[0] + '***' + local[local.length - 1] : local[0] + '***';
+      return `${maskedLocal}@${domain}`;
+    };
+
+    return res.json({
+      success: true,
+      require2FA: true,
+      email: user.email,
+      maskedEmail: maskEmail(user.email),
+      message: `A 6-digit 2FA security code has been dispatched to your email (${maskEmail(user.email)}).`
+    });
+  }
+
   const accessToken = generateAccessToken(user.id, user.role);
   const refreshToken = generateRefreshToken(user.id, user.role);
   setRefreshTokenCookie(res, refreshToken);
@@ -372,6 +422,119 @@ exports.login = async (req, res) => {
     accessToken,
     user: formatUserResponse(user)
   });
+};
+
+// ─── VERIFY ADMIN 2FA OTP (POST /api/auth/verify-admin-2fa) ───────────────────
+exports.verifyAdmin2FA = async (req, res) => {
+  try {
+    const email = (req.body.email || req.body.identifier || '').trim().toLowerCase();
+    const otp = (req.body.otp || '').trim();
+
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: 'Admin email and 6-digit OTP are required' });
+    }
+
+    const user = await findUserByIdentifier(email);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Admin account not found' });
+    }
+
+    if (user.isBlocked) {
+      return res.status(403).json({ success: false, message: 'Account is suspended. Please contact support.' });
+    }
+
+    if (!user.otp || !user.otpExpires) {
+      return res.status(400).json({ success: false, message: 'No 2FA code requested. Please log in again.' });
+    }
+
+    if (user.otpPurpose !== 'LOGIN') {
+      return res.status(400).json({ success: false, message: 'Invalid 2FA security session. Please log in again.' });
+    }
+
+    if (new Date() > user.otpExpires) {
+      return res.status(400).json({ success: false, message: '2FA security code has expired. Please request a new code.' });
+    }
+
+    const isMatch = await bcrypt.compare(otp, user.otp);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: 'Invalid 6-digit 2FA code. Please verify and try again.' });
+    }
+
+    // Clear OTP after successful verification
+    const verifiedAdmin = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        otp: null,
+        otpExpires: null,
+        otpPurpose: null,
+        isVerified: true
+      }
+    });
+
+    const accessToken = generateAccessToken(verifiedAdmin.id, verifiedAdmin.role);
+    const refreshToken = generateRefreshToken(verifiedAdmin.id, verifiedAdmin.role);
+    setRefreshTokenCookie(res, refreshToken);
+
+    return res.json({
+      success: true,
+      message: 'Admin 2FA authentication verified successfully!',
+      token: accessToken,
+      accessToken,
+      user: formatUserResponse(verifiedAdmin)
+    });
+  } catch (err) {
+    console.error('Verify Admin 2FA error:', err);
+    return res.status(500).json({ success: false, message: 'Internal server error during 2FA verification' });
+  }
+};
+
+// ─── RESEND ADMIN 2FA OTP (POST /api/auth/resend-admin-2fa) ───────────────────
+exports.resendAdmin2FA = async (req, res) => {
+  try {
+    const email = (req.body.email || req.body.identifier || '').trim().toLowerCase();
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Admin email is required' });
+    }
+
+    const user = await findUserByIdentifier(email);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Admin account not found' });
+    }
+
+    const otp = generateOTP();
+    const hashedOtp = await bcrypt.hash(otp, 10);
+    const otpExpires = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        otp: hashedOtp,
+        otpExpires,
+        otpPurpose: 'LOGIN'
+      }
+    });
+
+    console.log(`\n=============================================`);
+    console.log(`[RESEND ADMIN 2FA EMAIL OTP] Dispatched to ${user.email}: ${otp}`);
+    console.log(`=============================================\n`);
+
+    try {
+      await sendAdmin2FAEmail(user.email, otp, user.name || 'Administrator');
+    } catch (e) {
+      console.warn('⚠️ Resend 2FA email dispatch warning:', e.message);
+    }
+
+    return res.json({
+      success: true,
+      message: `A fresh 2FA security code has been sent to your email.`
+    });
+  } catch (err) {
+    console.error('Resend Admin 2FA error:', err);
+    return res.status(500).json({ success: false, message: 'Failed to resend 2FA security code' });
+  }
 };
 
 // ─── REFRESH TOKEN (POST /api/auth/refresh) ─────────────────────────
@@ -560,22 +723,41 @@ exports.sendResetOtp = async (req, res) => {
     console.log(`[RESET PASSWORD OTP] Code for ${user.email || user.phone}: ${otp}`);
     console.log(`=============================================\n`);
 
+    const isAdmin = user.role === 'ADMIN' || [
+      'sharnaapparels@gmail.com',
+      'priyanshulokhande72@gmail.com',
+      'chetna@sharna.com',
+      'swati@sharna.com'
+    ].includes(user.email?.toLowerCase());
+
     const isEmail = identifier.includes('@');
     let sendMethod = 'WhatsApp';
+
+    // For Admin accounts, ALWAYS dispatch OTP strictly and exclusively to their official email inbox!
+    if (isAdmin && user.email) {
+      try {
+        await sendPasswordResetEmail(user.email, otp);
+      } catch (e) {
+        console.warn('⚠️ Admin password reset email dispatch error:', e.message);
+      }
+      return res.json({
+        success: true,
+        message: `Admin security reset code has been sent exclusively to your registered email (${user.email}).`
+      });
+    }
 
     if (isEmail && user.email) {
       sendMethod = 'Email';
       try {
-        const { sendPasswordResetEmail } = require('../utils/email.service');
         await sendPasswordResetEmail(user.email, otp);
       } catch (e) {
-        console.warn('Password reset email dispatch error:', e.message);
+        console.warn('⚠️ Password reset email dispatch error:', e.message);
       }
     } else {
       try {
         await sendWhatsAppOTPText(user.phone || identifier, otp);
       } catch (e) {
-        console.warn('Password reset WhatsApp dispatch error:', e.message);
+        console.warn('⚠️ Password reset WhatsApp dispatch error:', e.message);
       }
     }
 

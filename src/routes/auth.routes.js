@@ -54,6 +54,16 @@ router.post('/login', loginLimiter, [
   body('password').notEmpty().withMessage('Password is required')
 ], authController.login);
 
+// ─── Admin Two-Factor Authentication (2FA) Routes ────────────────────────────
+router.post('/verify-admin-2fa', otpVerifyLimiter, [
+  body('email').notEmpty().withMessage('Admin email is required'),
+  body('otp').isLength({ min: 6, max: 6 }).withMessage('2FA OTP must be 6 digits')
+], authController.verifyAdmin2FA);
+
+router.post('/resend-admin-2fa', otpSendLimiter, [
+  body('email').notEmpty().withMessage('Admin email is required')
+], authController.resendAdmin2FA);
+
 // ─── Send OTP for Login ───────────────────────────────────────────────────────
 router.post('/send-otp', otpSendLimiter, [
   body('phone').notEmpty().withMessage('Phone number is required')
