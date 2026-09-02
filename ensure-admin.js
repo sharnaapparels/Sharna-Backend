@@ -6,16 +6,24 @@ const prisma = new PrismaClient();
 async function ensureAdmin() {
   const hashedPassword = await bcrypt.hash('admin123', 10);
 
-  // 1. Ensure sharnaapparels@gmail.com admin account
+  // 1. Ensure Swati Kureel (sharnaapparels@gmail.com) admin account
   const adminEmail = 'sharnaapparels@gmail.com';
   const existingAdmin = await prisma.user.findFirst({
-    where: { email: adminEmail }
+    where: { 
+      OR: [
+        { email: adminEmail },
+        { phone: '+916268218135' }
+      ]
+    }
   });
 
   if (existingAdmin) {
     await prisma.user.update({
       where: { id: existingAdmin.id },
       data: {
+        name: 'Mrs. Swati Kureel',
+        email: adminEmail,
+        phone: '+916268218135',
         password: hashedPassword,
         role: 'ADMIN',
         isVerified: true,
@@ -26,47 +34,57 @@ async function ensureAdmin() {
   } else {
     await prisma.user.create({
       data: {
-        name: 'Mrs. Chetna Kureel',
+        name: 'Mrs. Swati Kureel',
         email: adminEmail,
-        phone: '+919324503975',
-        password: hashedPassword,
-        role: 'ADMIN',
-        isVerified: true
-      }
-    });
-    console.log(`✅ Admin account created: ${adminEmail} (Role: ADMIN, Password: admin123)`);
-  }
-
-  // 2. Ensure swati@sharna.com admin account
-  const swatiEmail = 'swati@sharna.com';
-  const existingSwati = await prisma.user.findFirst({
-    where: { email: swatiEmail }
-  });
-
-  if (existingSwati) {
-    await prisma.user.update({
-      where: { id: existingSwati.id },
-      data: {
-        name: 'Mrs. Chetna Kureel',
+        phone: '+916268218135',
         password: hashedPassword,
         role: 'ADMIN',
         isVerified: true,
         isBlocked: false
       }
     });
-    console.log(`✅ Secondary Admin updated: ${swatiEmail} (Password: admin123)`);
-  } else {
-    await prisma.user.create({
+    console.log(`✅ Admin account created: ${adminEmail} (Role: ADMIN, Password: admin123)`);
+  }
+
+  // 2. Ensure Priyanshu Lokhande (priyanshulokhande72@gmail.com) admin account
+  const priyanshuEmail = 'priyanshulokhande72@gmail.com';
+  const existingPriyanshu = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: priyanshuEmail },
+        { email: 'swati@sharna.com' },
+        { phone: '+917999715256' }
+      ]
+    }
+  });
+
+  if (existingPriyanshu) {
+    await prisma.user.update({
+      where: { id: existingPriyanshu.id },
       data: {
-        name: 'Mrs. Chetna Kureel',
-        email: swatiEmail,
+        name: 'Priyanshu Lokhande',
+        email: priyanshuEmail,
         phone: '+917999715256',
         password: hashedPassword,
         role: 'ADMIN',
-        isVerified: true
+        isVerified: true,
+        isBlocked: false
       }
     });
-    console.log(`✅ Secondary Admin created: ${swatiEmail} (Password: admin123)`);
+    console.log(`✅ Secondary Admin updated: ${priyanshuEmail} (Password: admin123)`);
+  } else {
+    await prisma.user.create({
+      data: {
+        name: 'Priyanshu Lokhande',
+        email: priyanshuEmail,
+        phone: '+917999715256',
+        password: hashedPassword,
+        role: 'ADMIN',
+        isVerified: true,
+        isBlocked: false
+      }
+    });
+    console.log(`✅ Secondary Admin created: ${priyanshuEmail} (Password: admin123)`);
   }
 }
 

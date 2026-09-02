@@ -11,8 +11,8 @@ async function seedAdmin() {
   const hashedPassword = await bcrypt.hash('admin123', 10);
 
   const adminAccounts = [
-    { email: 'chetna@sharna.com', phone: '+919324503975', name: 'Mrs. Chetna Kureel' },
-    { email: 'sharnaapparels@gmail.com', phone: '+917999715256', name: 'Sharna Admin' }
+    { email: 'sharnaapparels@gmail.com', phone: '+916268218135', name: 'Mrs. Swati Kureel' },
+    { email: 'priyanshulokhande72@gmail.com', phone: '+917999715256', name: 'Priyanshu Lokhande' }
   ];
 
   for (const acc of adminAccounts) {

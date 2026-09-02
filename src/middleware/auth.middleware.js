@@ -30,7 +30,7 @@ const protect = async (req, res, next) => {
 
 const adminOnly = (req, res, next) => {
   const adminEmails = ['sharnaapparels@gmail.com', 'chetna@sharna.com', 'swati@sharna.com', 'priyanshulokhande72@gmail.com', 'anshlokhande405@gmail.com'];
-  const adminPhones = ['+917999715256', '917999715256', '+919876543210', '+919039241765'];
+  const adminPhones = ['+916268218135', '916268218135', '6268218135', '+917999715256', '917999715256', '7999715256', '+919324503975', '+919876543210', '+919039241765'];
 
   if (
     req.user &&
