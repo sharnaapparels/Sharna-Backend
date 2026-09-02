@@ -21,7 +21,7 @@ async function ensureAdmin() {
     await prisma.user.update({
       where: { id: existingAdmin.id },
       data: {
-        name: 'Mrs. Swati Kureel',
+        name: 'Miss Swati Kureel',
         email: adminEmail,
         phone: '+916268218135',
         password: hashedPassword,
@@ -34,7 +34,7 @@ async function ensureAdmin() {
   } else {
     await prisma.user.create({
       data: {
-        name: 'Mrs. Swati Kureel',
+        name: 'Miss Swati Kureel',
         email: adminEmail,
         phone: '+916268218135',
         password: hashedPassword,
