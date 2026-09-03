@@ -43,28 +43,28 @@ const uploadFileToCloudinaryOrDisk = async (req, file, folderName = 'sharna_uplo
   } catch (_) {}
 
   try {
-    // Generate desktop WebP (1920px, 86%)
+    // Generate desktop WebP (2560px 2K/4K Retina, 92% studio fidelity)
     await sharp(file.buffer)
-      .resize({ width: 1920, withoutEnlargement: true })
-      .webp({ quality: 86, smartSubsample: true })
+      .resize({ width: 2560, withoutEnlargement: true })
+      .webp({ quality: 92, effort: 6, smartSubsample: true })
       .toFile(webpPath);
 
-    // Generate desktop AVIF (1920px, 85%)
+    // Generate desktop AVIF (2560px 2K/4K Retina, 90% studio fidelity)
     await sharp(file.buffer)
-      .resize({ width: 1920, withoutEnlargement: true })
-      .avif({ quality: 85, chromaSubsampling: '4:4:4' })
+      .resize({ width: 2560, withoutEnlargement: true })
+      .avif({ quality: 90, effort: 6, chromaSubsampling: '4:4:4' })
       .toFile(avifPath);
 
-    // Generate mobile WebP (900px, 86%)
+    // Generate mobile WebP (1440px 3x Retina, 90% fidelity)
     await sharp(file.buffer)
-      .resize({ width: 900, withoutEnlargement: true })
-      .webp({ quality: 86, smartSubsample: true })
+      .resize({ width: 1440, withoutEnlargement: true })
+      .webp({ quality: 90, effort: 6, smartSubsample: true })
       .toFile(mobileWebpPath);
 
-    // Generate mobile AVIF (900px, 85%)
+    // Generate mobile AVIF (1440px 3x Retina, 88% fidelity)
     await sharp(file.buffer)
-      .resize({ width: 900, withoutEnlargement: true })
-      .avif({ quality: 85, chromaSubsampling: '4:4:4' })
+      .resize({ width: 1440, withoutEnlargement: true })
+      .avif({ quality: 88, effort: 6, chromaSubsampling: '4:4:4' })
       .toFile(mobileAvifPath);
 
     const protocol = req.protocol || 'http';

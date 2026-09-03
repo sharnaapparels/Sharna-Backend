@@ -149,17 +149,17 @@ app.use('/uploads', async (req, res, next) => {
 
   if (sourceFile) {
     try {
-      const targetWidth = isMobile ? 900 : 1920;
+      const targetWidth = isMobile ? 1440 : 2560;
       let sharpInstance = sharp(sourceFile).resize({ width: targetWidth, withoutEnlargement: true });
 
       if (ext === '.avif') {
-        sharpInstance = sharpInstance.avif({ quality: 85, chromaSubsampling: '4:4:4' });
+        sharpInstance = sharpInstance.avif({ quality: isMobile ? 88 : 90, effort: 6, chromaSubsampling: '4:4:4' });
         res.type('image/avif');
       } else if (ext === '.webp') {
-        sharpInstance = sharpInstance.webp({ quality: 86, smartSubsample: true });
+        sharpInstance = sharpInstance.webp({ quality: isMobile ? 90 : 92, effort: 6, smartSubsample: true });
         res.type('image/webp');
       } else {
-        sharpInstance = sharpInstance.png({ quality: 90 });
+        sharpInstance = sharpInstance.png({ quality: 95 });
         res.type('image/png');
       }
 

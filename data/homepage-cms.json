@@ -1,6 +1,27 @@
 {
-  "updatedAt": "2026-09-03T01:00:00.000Z",
-  "heroSlides": [],
+  "updatedAt": "2026-09-03T01:35:40.507Z",
+  "heroSlides": [
+    {
+      "id": "slide-1788398201409",
+      "title": "",
+      "imageUrl": "http://localhost:5008/uploads/sharna_products-1788399304752-289511273.webp",
+      "linkPath": "/collections",
+      "subtitle": "",
+      "buttonText": "SHOP COLLECTION",
+      "mobileImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788398349664-118064878.webp",
+      "desktopImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788398292227-850224135.webp"
+    },
+    {
+      "id": "slide-1788398202735",
+      "title": "",
+      "imageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788398337871-239980607.webp",
+      "linkPath": "/collections",
+      "subtitle": "",
+      "buttonText": "SHOP COLLECTION",
+      "mobileImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788398485498-992078973.webp",
+      "desktopImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788398337871-239980607.webp"
+    }
+  ],
   "testimonials": [
     {
       "id": "t-1",
@@ -61,14 +82,14 @@
       "tag": "Handcrafted Blouses",
       "link": "/shop?category=shirts",
       "name": "ETHNIC SHIRTS",
-      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788288819/sharna_banners/fsl01xev1699cxgknvoh.png"
+      "image": "/src/assets/celebrity-1.png"
     },
     {
       "id": "cat-6",
       "tag": "Heritage Weaves",
       "link": "/shop?collection=festive-collection",
       "name": "FESTIVE COLLECTION",
-      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862351/sharna_products/bhhjppaimu0ojppewehu.png"
+      "image": "/src/assets/festive-2.png"
     }
   ],
   "bestSellersProductIds": [
