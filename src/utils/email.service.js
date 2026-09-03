@@ -290,11 +290,11 @@ const sendEmailInvoice = async (email, orderDetails) => {
 
   const trackingBlock = orderDetails.awbCode ? `
     <div style="background-color: #FAF4EB; border-left: 4px solid #C5A86B; border-radius: 8px; padding: 16px; margin-bottom: 22px; text-align: left;">
-      <span style="font-size: 10px; font-weight: 700; color: #A67E39; letter-spacing: 0.14em; text-transform: uppercase; display: block; margin-bottom: 4px;">AUTOMATED SHIPROCKET DISPATCH</span>
-      <div style="font-size: 13.5px; font-weight: 700; color: #1E1915;">Courier: ${orderDetails.courierName || 'Delhivery Express Air'}</div>
+      <span style="font-size: 10px; font-weight: 700; color: #A67E39; letter-spacing: 0.14em; text-transform: uppercase; display: block; margin-bottom: 4px;">ORDER DISPATCH & TRACKING</span>
+      <div style="font-size: 13.5px; font-weight: 700; color: #1E1915;">Courier: ${orderDetails.courierName || 'Express Logistics'}</div>
       <div style="font-size: 12.5px; color: #5C4E46; margin-top: 2px;">AWB Tracking Code: <strong style="color: #1E1915;">${orderDetails.awbCode}</strong></div>
       ${orderDetails.trackingUrl ? `
-        <a href="${orderDetails.trackingUrl}" target="_blank" style="display: inline-block; margin-top: 10px; padding: 8px 18px; background: #181412; color: #C5A86B; text-decoration: none; border-radius: 20px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">TRACK SHIPMENT ON SHIPROCKET →</a>
+        <a href="${orderDetails.trackingUrl}" target="_blank" style="display: inline-block; margin-top: 10px; padding: 8px 18px; background: #181412; color: #C5A86B; text-decoration: none; border-radius: 20px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;">TRACK YOUR SHIPMENT →</a>
       ` : ''}
     </div>
   ` : '';

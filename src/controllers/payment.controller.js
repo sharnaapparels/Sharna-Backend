@@ -4,10 +4,11 @@ const prisma = require('../config/database');
 const { sendWhatsAppInvoice } = require('../utils/whatsapp.service');
 const { sendEmailInvoice } = require('../utils/email.service');
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET
-});
+const getRazorpayInstance = () => {
+  const key_id = (process.env.RAZORPAY_KEY_ID || '').trim();
+  const key_secret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
+  return new Razorpay({ key_id, key_secret });
+};
 
 // POST /api/payment/create-order
 exports.createOrder = async (req, res) => {
@@ -21,10 +22,11 @@ exports.createOrder = async (req, res) => {
     };
 
     let razorpayOrder = null;
+    const razorpay = getRazorpayInstance();
     try {
       razorpayOrder = await razorpay.orders.create(options);
     } catch (rzpErr) {
-      console.error("Razorpay order creation error:", rzpErr);
+      console.error("Razorpay order creation error:", rzpErr?.error || rzpErr?.message || rzpErr);
       if (process.env.NODE_ENV === 'production') {
         return res.status(500).json({ 
           success: false, 
@@ -74,7 +76,7 @@ exports.createOrder = async (req, res) => {
         }
       }
 
-      const verifiedShipping = calculatedSubtotal > 10000 ? 0 : 500;
+      const verifiedShipping = 0; // Complimentary free shipping
       const verifiedTotal = calculatedSubtotal > 0 ? (calculatedSubtotal + verifiedShipping) : amount;
 
       // Resolve user ID (authenticated user or fallback guest user)
@@ -203,42 +205,17 @@ const triggerInvoiceNotifications = async (orderId) => {
       }))
     };
 
-    // ─── AUTOMATED SHIPROCKET DISPATCH ──────────────────────────────────────────
+    // Update order status to CONFIRMED and paymentStatus to PAID
     try {
-      const { createShiprocketOrder } = require('../utils/shiprocket.service');
-      const shipmentResult = await createShiprocketOrder(orderWithDetails);
-
-      if (shipmentResult && shipmentResult.awbCode) {
-        let existingNotes = {};
-        if (orderWithDetails.notes) {
-          try { existingNotes = JSON.parse(orderWithDetails.notes); } catch (e) {}
+      await prisma.order.update({
+        where: { id: orderWithDetails.id },
+        data: {
+          status: 'CONFIRMED',
+          paymentStatus: 'PAID'
         }
-
-        const updatedNotes = JSON.stringify({
-          ...existingNotes,
-          shipmentId: shipmentResult.shipmentId,
-          awbCode: shipmentResult.awbCode,
-          courierName: shipmentResult.courierName,
-          trackingUrl: shipmentResult.trackingUrl,
-          shippedAt: new Date().toISOString()
-        });
-
-        // Set status to CONFIRMED in database (Dispatched status is set exclusively by Admin)
-        await prisma.order.update({
-          where: { id: orderWithDetails.id },
-          data: {
-            status: 'CONFIRMED',
-            paymentStatus: 'PAID',
-            notes: updatedNotes
-          }
-        });
-
-        orderDetails.awbCode = shipmentResult.awbCode;
-        orderDetails.courierName = shipmentResult.courierName;
-        orderDetails.trackingUrl = shipmentResult.trackingUrl;
-      }
-    } catch (shipErr) {
-      console.warn("Automated Shiprocket dispatch background warning:", shipErr);
+      });
+    } catch (dbErr) {
+      console.warn("Order confirmation update warning:", dbErr);
     }
 
     // Asynchronously send invoices in background (non-blocking)
@@ -306,7 +283,7 @@ exports.verifyPayment = async (req, res) => {
     });
   }
 
-  const razorpaySecret = process.env.RAZORPAY_KEY_SECRET;
+  const razorpaySecret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
   if (!razorpaySecret) {
     return res.status(500).json({
       success: false,

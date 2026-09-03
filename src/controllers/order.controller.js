@@ -54,7 +54,7 @@ exports.createOrder = async (req, res) => {
     }
   }
 
-  const verifiedShipping = calculatedSubtotal > 10000 ? 0 : 500;
+  const verifiedShipping = 0; // Complimentary free shipping
   const verifiedTotal = calculatedSubtotal + verifiedShipping;
 
   const order = await prisma.order.create({
@@ -193,8 +193,8 @@ exports.viewInvoiceHTML = async (req, res) => {
         id: id || 'cmt1cuunj0001vs1k40h8jtwb',
         orderNumber: id || 'cmt1cuunj0001vs1k40h8jtwb',
         createdAt: new Date(),
-        totalAmount: 2300,
-        shippingAmount: 500,
+        totalAmount: 1800,
+        shippingAmount: 0,
         notes: JSON.stringify({
           shippingName: 'Mr.priyanshu lokhande',
           shippingEmail: 'priyanshulokhande72@gmail.com',

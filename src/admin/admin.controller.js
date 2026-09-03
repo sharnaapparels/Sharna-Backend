@@ -215,10 +215,10 @@ exports.updateOrderStatus = async (req, res) => {
   }
 };
 
-// POST /api/admin/orders/:id/shipment
+// POST /api/admin/orders/:id/shipment (Manual / Generic Courier Dispatch)
 exports.createShipment = async (req, res) => {
   const { id } = req.params;
-  const { createShiprocketOrder } = require('../utils/shiprocket.service');
+  const { courierName = 'Express Logistics', awbCode, trackingUrl } = req.body || {};
 
   try {
     const order = await prisma.order.findUnique({
@@ -233,7 +233,7 @@ exports.createShipment = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
-    const shipmentResult = await createShiprocketOrder(order);
+    const assignedAwb = awbCode || `AWB-${Math.floor(1000000000 + Math.random() * 9000000000)}`;
 
     let existingNotes = {};
     if (order.notes) {
@@ -242,10 +242,9 @@ exports.createShipment = async (req, res) => {
 
     const updatedNotes = JSON.stringify({
       ...existingNotes,
-      shipmentId: shipmentResult.shipmentId,
-      awbCode: shipmentResult.awbCode,
-      courierName: shipmentResult.courierName,
-      trackingUrl: shipmentResult.trackingUrl,
+      awbCode: assignedAwb,
+      courierName: courierName || 'Express Logistics',
+      trackingUrl: trackingUrl || '',
       shippedAt: new Date().toISOString()
     });
 
@@ -263,13 +262,17 @@ exports.createShipment = async (req, res) => {
 
     res.json({
       success: true,
-      message: `Dispatched via ${shipmentResult.courierName}! AWB: ${shipmentResult.awbCode}`,
-      shipment: shipmentResult,
+      message: 'Order dispatch status updated successfully',
+      shipment: {
+        awbCode: assignedAwb,
+        courierName: courierName || 'Express Logistics',
+        trackingUrl: trackingUrl || ''
+      },
       order: updatedOrder
     });
   } catch (err) {
-    console.error("Create shipment error:", err);
-    res.status(500).json({ success: false, message: 'Failed to dispatch shipment' });
+    console.error('Create shipment error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update order shipment' });
   }
 };
 
