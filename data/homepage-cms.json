@@ -82,14 +82,14 @@
       "tag": "Handcrafted Blouses",
       "link": "/shop?category=shirts",
       "name": "ETHNIC SHIRTS",
-      "image": "/src/assets/celebrity-1.png"
+      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788288819/sharna_banners/fsl01xev1699cxgknvoh.png"
     },
     {
       "id": "cat-6",
       "tag": "Heritage Weaves",
       "link": "/shop?collection=festive-collection",
       "name": "FESTIVE COLLECTION",
-      "image": "/src/assets/festive-2.png"
+      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862351/sharna_products/bhhjppaimu0ojppewehu.png"
     }
   ],
   "bestSellersProductIds": [

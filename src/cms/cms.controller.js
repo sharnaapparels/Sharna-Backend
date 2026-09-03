@@ -180,12 +180,72 @@ exports.getHomepageCMS = async (req, res) => {
       }
     }
 
-    // Build populatedProducts — DB-found items only (static IDs are resolved client-side)
+    // Ensure all 4 sections have at least 4 products if available in DB
+    const allDbProds = Object.values(prodMap);
+    let fallbackDbProds = allDbProds;
+    if (allDbProds.length < 4) {
+      try {
+        const extraProds = await prisma.product.findMany({
+          where: { isPublished: true },
+          take: 8,
+          select: {
+            id: true,
+            title: true,
+            price: true,
+            salePrice: true,
+            category: true,
+            collection: true,
+            isPublished: true,
+            isFeatured: true,
+            images: { select: { id: true, url: true, isPrimary: true } },
+            variants: { select: { id: true, size: true, color: true, stock: true } }
+          }
+        });
+        extraProds.forEach(p => {
+          if (!prodMap[String(p.id)]) {
+            prodMap[String(p.id)] = {
+              id: p.id,
+              title: p.title,
+              price: p.price,
+              originalPrice: p.salePrice || p.price,
+              salePrice: p.salePrice,
+              category: p.category,
+              collection: p.collection,
+              image: p.images?.[0]?.url || '',
+              images: p.images || [],
+              color: p.variants?.[0]?.color || 'beige',
+              colors: [...new Set((p.variants || []).map(v => v.color).filter(Boolean))],
+              sizes: [...new Set((p.variants || []).map(v => v.size).filter(Boolean))],
+              inStock: p.isPublished !== false,
+              isNewArrival: p.collection === 'new-arrivals',
+              isReadyToShip: p.collection === 'ready-to-ship',
+              isFeatured: p.isFeatured
+            };
+          }
+        });
+        fallbackDbProds = Object.values(prodMap);
+      } catch (_) {}
+    }
+
+    const fillToFour = (list) => {
+      const result = [...list];
+      const seen = new Set(result.map(p => String(p.id)));
+      for (const p of fallbackDbProds) {
+        if (result.length >= 4) break;
+        if (!seen.has(String(p.id))) {
+          seen.add(String(p.id));
+          result.push(p);
+        }
+      }
+      return result.slice(0, 4);
+    };
+
+    // Build populatedProducts — Guaranteed 4 products per section
     populatedProducts = {
-      newArrivals: (config.newArrivalsProductIds || []).map(id => prodMap[String(id)]).filter(Boolean),
-      celebrityCloset: (config.celebrityClosetProductIds || []).map(id => prodMap[String(id)]).filter(Boolean),
-      bestSellers: (config.bestSellersProductIds || []).map(id => prodMap[String(id)]).filter(Boolean),
-      readyToShip: (config.readyToShipProductIds || []).map(id => prodMap[String(id)]).filter(Boolean)
+      newArrivals: fillToFour((config.newArrivalsProductIds || []).map(id => prodMap[String(id)]).filter(Boolean)),
+      celebrityCloset: fillToFour((config.celebrityClosetProductIds || []).map(id => prodMap[String(id)]).filter(Boolean)),
+      bestSellers: fillToFour((config.bestSellersProductIds || []).map(id => prodMap[String(id)]).filter(Boolean)),
+      readyToShip: fillToFour((config.readyToShipProductIds || []).map(id => prodMap[String(id)]).filter(Boolean))
     };
 
     // Sanitize any residual Base64 strings from config
