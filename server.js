@@ -121,52 +121,55 @@ app.use('/uploads', async (req, res, next) => {
     return next();
   }
 
-  const baseName = path.basename(reqPath, ext);
   const uploadsDir = path.join(__dirname, 'public/uploads');
   const requestedFile = path.join(uploadsDir, reqPath);
-  const accept = req.headers.accept || '';
 
-  const prefersAvif = accept.includes('image/avif');
-  const prefersWebp = accept.includes('image/webp');
-  
-  const avifFile = path.join(uploadsDir, `${baseName}.avif`);
-  const webpFile = path.join(uploadsDir, `${baseName}.webp`);
-
-  // 1. Serve AVIF derivative if available and browser supports it
-  if (prefersAvif && fs.existsSync(avifFile)) {
-    res.type('image/avif');
-    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
-    return res.sendFile(avifFile);
-  }
-
-  // 2. Serve WebP derivative if available and browser supports it
-  if (prefersWebp && fs.existsSync(webpFile)) {
-    res.type('image/webp');
-    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
-    return res.sendFile(webpFile);
-  }
-
-  // 3. If requested file is a large PNG/JPG (> 400KB), auto-serve/transcode WebP
+  // 1. If exact file exists, serve it immediately
   if (fs.existsSync(requestedFile)) {
+    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    return res.sendFile(requestedFile);
+  }
+
+  // 2. If exact derivative is missing, find the root source file and transcode on the fly
+  const baseName = path.basename(reqPath, ext);
+  const isMobile = baseName.endsWith('-mobile');
+  const rootName = baseName.replace(/-mobile$/, '').replace(/-master$/, '');
+
+  const possibleSources = [
+    path.join(uploadsDir, `${rootName}-master.png`),
+    path.join(uploadsDir, `${rootName}-master.jpg`),
+    path.join(uploadsDir, `${rootName}.png`),
+    path.join(uploadsDir, `${rootName}.webp`),
+    path.join(uploadsDir, `${rootName}.avif`),
+    path.join(uploadsDir, `${rootName}.jpg`),
+    path.join(uploadsDir, `${rootName}.jpeg`)
+  ];
+
+  const sourceFile = possibleSources.find(p => fs.existsSync(p));
+
+  if (sourceFile) {
     try {
-      const stat = fs.statSync(requestedFile);
-      if (stat.size > 400 * 1024) {
-        if (fs.existsSync(webpFile)) {
-          res.type('image/webp');
-          res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
-          return res.sendFile(webpFile);
-        }
-        // Transcode on the fly
-        await sharp(requestedFile)
-          .resize({ width: 1920, withoutEnlargement: true })
-          .webp({ quality: 86, smartSubsample: true })
-          .toFile(webpFile);
+      const targetWidth = isMobile ? 900 : 1920;
+      let sharpInstance = sharp(sourceFile).resize({ width: targetWidth, withoutEnlargement: true });
+
+      if (ext === '.avif') {
+        sharpInstance = sharpInstance.avif({ quality: 85, chromaSubsampling: '4:4:4' });
+        res.type('image/avif');
+      } else if (ext === '.webp') {
+        sharpInstance = sharpInstance.webp({ quality: 86, smartSubsample: true });
         res.type('image/webp');
-        res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
-        return res.sendFile(webpFile);
+      } else {
+        sharpInstance = sharpInstance.png({ quality: 90 });
+        res.type('image/png');
       }
-    } catch (e) {
-      console.warn('Upload image stream fallback:', e.message);
+
+      // Save derivative to disk for 0ms subsequent loads
+      await sharpInstance.toFile(requestedFile);
+      res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+      return res.sendFile(requestedFile);
+    } catch (err) {
+      console.warn('On-the-fly transcoding fallback:', err.message);
+      return res.sendFile(sourceFile);
     }
   }
 
