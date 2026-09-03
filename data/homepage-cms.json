@@ -1,25 +1,6 @@
 {
-  "updatedAt": "2026-09-02T20:19:40.447Z",
-  "heroSlides": [
-    {
-      "id": "test-slide-1",
-      "title": "Test Live Banner",
-      "imageUrl": "http://localhost:5008/uploads/sharna_products-1788380371102-710439210.webp",
-      "buttonText": "Discover collection",
-      "mobileImageUrl": "http://localhost:5008/uploads/sharna_products-1788380377410-489337623.webp",
-      "desktopImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862351/sharna_products/bhhjppaimu0ojppewehu.png"
-    },
-    {
-      "id": "slide-1788288791462",
-      "title": "ROYAL WEDDING COUTURE",
-      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788288819/sharna_banners/fsl01xev1699cxgknvoh.png",
-      "linkPath": "/collections",
-      "subtitle": "Handcrafted Heritage Masterpieces for Grand Celebrations",
-      "buttonText": "SHOP COLLECTION",
-      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788288870/sharna_banners/ug3pwmaz6fkahpcftaxv.png",
-      "desktopImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788288819/sharna_banners/fsl01xev1699cxgknvoh.png"
-    }
-  ],
+  "updatedAt": "2026-09-03T01:00:00.000Z",
+  "heroSlides": [],
   "testimonials": [
     {
       "id": "t-1",
