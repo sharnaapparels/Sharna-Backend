@@ -10,19 +10,32 @@ const sharp = require('sharp');
 const uploadFileToCloudinaryOrDisk = async (req, file, folderName = 'sharna_uploads') => {
   if (!file || !file.buffer) return null;
 
-  // 1. Try Cloudinary upload via data URI
-  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY) {
+  // 1. Try Cloudinary direct buffer stream upload with eager CDN pre-warming
+  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
     try {
-      const b64 = Buffer.from(file.buffer).toString('base64');
-      const dataURI = `data:${file.mimetype};base64,${b64}`;
-      const res = await cloudinary.uploader.upload(dataURI, {
-        folder: folderName
+      const uploadStreamResult = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: folderName,
+            resource_type: 'image',
+            eager_async: true,
+            eager: [
+              { width: 1920, crop: 'limit', quality: 'auto:good', fetch_format: 'auto' },
+              { width: 1080, crop: 'limit', quality: 'auto:good', fetch_format: 'auto' }
+            ]
+          },
+          (error, result) => {
+            if (error) return reject(error);
+            resolve(result);
+          }
+        );
+        stream.end(file.buffer);
       });
-      if (res && res.secure_url) {
-        return res.secure_url;
+      if (uploadStreamResult && uploadStreamResult.secure_url) {
+        return uploadStreamResult.secure_url;
       }
     } catch (cErr) {
-      console.warn('Cloudinary upload fallback to local disk:', cErr.message);
+      console.warn('Cloudinary upload_stream fallback to local disk:', cErr.message);
     }
   }
 
