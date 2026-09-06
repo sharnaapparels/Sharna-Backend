@@ -1,37 +1,6 @@
 {
-  "updatedAt": "2026-09-06T04:27:45.560Z",
-  "heroSlides": [
-    {
-      "id": "slide-1",
-      "title": "SHARNA Festive Luxury",
-      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673457/sharna_banners/hero-slide-1_master.webp",
-      "desktopImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673457/sharna_banners/hero-slide-1_master.webp",
-      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673460/sharna_banners/hero-mobile-1_master.png",
-      "linkPath": "/collections",
-      "subtitle": "Handcrafted Luxury",
-      "buttonText": "SHOP COLLECTION"
-    },
-    {
-      "id": "slide-2",
-      "title": "New Royal Arrivals",
-      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673458/sharna_banners/hero-slide-2_master.webp",
-      "desktopImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673458/sharna_banners/hero-slide-2_master.webp",
-      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673462/sharna_banners/hero-mobile-2_master.png",
-      "linkPath": "/collections",
-      "subtitle": "Haute Couture",
-      "buttonText": "SHOP COLLECTION"
-    },
-    {
-      "id": "slide-3",
-      "title": "Festive Ready To Ship",
-      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673515/sharna_banners/hero-slide-3_master.webp",
-      "desktopImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673515/sharna_banners/hero-slide-3_master.webp",
-      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673517/sharna_banners/hero-mobile-3_master.png",
-      "linkPath": "/ready-to-ship",
-      "subtitle": "Express Delivery",
-      "buttonText": "EXPLORE NOW"
-    }
-  ],
+  "updatedAt": "2026-09-06T05:55:00.000Z",
+  "heroSlides": [],
   "testimonials": [
     {
       "id": "t-1",
