@@ -100,7 +100,8 @@ router.post('/single', protect, adminOnly, upload.single('image'), async (req, r
       return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
     
-    const fileUrl = await uploadFileToCloudinaryOrDisk(req, req.file, 'sharna_products');
+    const folder = req.query.folder || 'sharna_banners';
+    const fileUrl = await uploadFileToCloudinaryOrDisk(req, req.file, folder);
     res.json({
       success: true,
       message: 'Image uploaded successfully',
