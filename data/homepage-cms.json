@@ -2,24 +2,34 @@
   "updatedAt": "2026-09-06T04:27:45.560Z",
   "heroSlides": [
     {
-      "id": "slide-1788404362830",
-      "title": "",
-      "imageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788457591798-51229390.webp",
+      "id": "slide-1",
+      "title": "SHARNA Festive Luxury",
+      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673457/sharna_banners/hero-slide-1_master.webp",
+      "desktopImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673457/sharna_banners/hero-slide-1_master.webp",
+      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673460/sharna_banners/hero-mobile-1_master.png",
       "linkPath": "/collections",
-      "subtitle": "",
-      "buttonText": "SHOP COLLECTION",
-      "mobileImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788457663572-618460938.webp",
-      "desktopImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788457591798-51229390.webp"
+      "subtitle": "Handcrafted Luxury",
+      "buttonText": "SHOP COLLECTION"
     },
     {
-      "id": "slide-1788404366253",
-      "title": "",
-      "imageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788457733236-191284018.webp",
+      "id": "slide-2",
+      "title": "New Royal Arrivals",
+      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673458/sharna_banners/hero-slide-2_master.webp",
+      "desktopImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673458/sharna_banners/hero-slide-2_master.webp",
+      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673462/sharna_banners/hero-mobile-2_master.png",
       "linkPath": "/collections",
-      "subtitle": "",
-      "buttonText": "SHOP COLLECTION",
-      "mobileImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788457794019-649548416.webp",
-      "desktopImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788457733236-191284018.webp"
+      "subtitle": "Haute Couture",
+      "buttonText": "SHOP COLLECTION"
+    },
+    {
+      "id": "slide-3",
+      "title": "Festive Ready To Ship",
+      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673515/sharna_banners/hero-slide-3_master.webp",
+      "desktopImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673515/sharna_banners/hero-slide-3_master.webp",
+      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788673517/sharna_banners/hero-mobile-3_master.png",
+      "linkPath": "/ready-to-ship",
+      "subtitle": "Express Delivery",
+      "buttonText": "EXPLORE NOW"
     }
   ],
   "testimonials": [
