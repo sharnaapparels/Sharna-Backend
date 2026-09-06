@@ -466,6 +466,249 @@ const sendEmailInvoice = async (email, orderDetails) => {
 };
 
 /**
+ * Luxury Order Dispatched / Shipment Tracking Notification Email
+ * Includes 3-5 Business Days Delivery Estimate, Courier/AWB tracking, items list & Support contacts (6868218135 / sharnaapparels@gmail.com)
+ */
+const sendOrderDispatchedEmail = async (email, orderDetails) => {
+  const targetEmail = email || orderDetails?.shippingEmail || orderDetails?.user?.email;
+  if (!targetEmail || !orderDetails) {
+    console.warn("⚠️ sendOrderDispatchedEmail skipped: No recipient email provided");
+    return;
+  }
+
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(price || 0);
+  };
+
+  const capitalizeText = (str) => {
+    if (!str) return '';
+    return String(str)
+      .toLowerCase()
+      .trim()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  const formattedCustomerName = capitalizeText(
+    orderDetails.shippingName || 
+    orderDetails.userName || 
+    orderDetails.user?.name || 
+    orderDetails.shippingAddress?.fullName || 
+    'Valued Patron'
+  );
+
+  const rawOrderId = orderDetails.id || orderDetails.orderId || orderDetails.orderNumber || 'SHARNA';
+  const displayOrderId = String(rawOrderId).slice(-8).toUpperCase();
+
+  // Extract shipment / courier details
+  let notesObj = {};
+  if (orderDetails.notes) {
+    try {
+      notesObj = typeof orderDetails.notes === 'string' ? JSON.parse(orderDetails.notes) : orderDetails.notes;
+    } catch (_) {}
+  }
+
+  const courierName = orderDetails.courierName || notesObj.courierName || 'Express Logistics (Blue Dart / Delhivery)';
+  const awbCode = orderDetails.awbCode || notesObj.awbCode || `AWB-${Math.floor(1000000000 + Math.random() * 9000000000)}`;
+  const trackingUrl = orderDetails.trackingUrl || notesObj.trackingUrl || `https://sharna.in/orders`;
+
+  // Calculate 7-10 Days delivery arrival window
+  const now = new Date();
+  const minDeliveryDate = new Date(now);
+  minDeliveryDate.setDate(minDeliveryDate.getDate() + 7);
+  const maxDeliveryDate = new Date(now);
+  maxDeliveryDate.setDate(maxDeliveryDate.getDate() + 10);
+
+  const deliveryWindowStr = `${minDeliveryDate.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })} – ${maxDeliveryDate.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}`;
+
+  const resolveItemImage = (item) => {
+    if (!item) return 'https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862351/sharna_products/bhhjppaimu0ojppewehu.png';
+    if (typeof item.image === 'string' && item.image.startsWith('http')) return item.image;
+    if (Array.isArray(item.product?.images) && item.product.images.length > 0) {
+      const p = item.product.images.find(img => img.isPrimary) || item.product.images[0];
+      if (p?.url && p.url.startsWith('http')) return p.url;
+    }
+    if (typeof item.product?.image === 'string' && item.product.image.startsWith('http')) return item.product.image;
+    return 'https://res.cloudinary.com/fcmtpwwu/image/upload/v1787862351/sharna_products/bhhjppaimu0ojppewehu.png';
+  };
+
+  const itemsRows = (orderDetails.items || []).map((item, index, arr) => {
+    const rawTitle = item.title || item.product?.title || 'Luxury Designer Garment';
+    const formattedTitle = capitalizeText(rawTitle);
+    const sizeStr = String(item.size || 'S').toUpperCase();
+    const colorStr = capitalizeText(item.color || 'Default');
+    const itemPrice = Number(item.price || 0);
+    const itemQty = Number(item.quantity || 1);
+    const itemImg = resolveItemImage(item);
+    const isLast = index === arr.length - 1;
+
+    return `
+      <tr>
+        <td style="padding: 14px 0; ${isLast ? '' : 'border-bottom: 1px solid #FAF0E4;'}">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+            <tr>
+              <td width="60" valign="top" style="padding-right: 12px;">
+                <img src="${itemImg}" width="54" height="68" alt="${formattedTitle}" style="width: 54px; height: 68px; object-fit: cover; border-radius: 6px; border: 1px solid #EAE1D5; display: block;" />
+              </td>
+              <td valign="top" style="text-align: left;">
+                <div style="font-size: 13.5px; font-weight: 700; color: #1E1915; font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.35;">${formattedTitle}</div>
+                <div style="font-size: 12px; color: #5C4E46; margin-top: 3px; font-family: 'Helvetica Neue', Arial, sans-serif;">Size ${sizeStr} &nbsp;•&nbsp; ${colorStr}</div>
+                <div style="font-size: 11.5px; color: #7A6960; margin-top: 2px; font-family: 'Helvetica Neue', Arial, sans-serif;">
+                  Qty: ${itemQty} &nbsp;(${formatPrice(itemPrice)} each)
+                </div>
+              </td>
+              <td valign="top" align="right" style="white-space: nowrap; font-size: 14px; font-weight: 700; color: #1E1915; font-family: 'Helvetica Neue', Arial, sans-serif; padding-left: 10px;">
+                ${formatPrice(itemPrice * itemQty)}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="color-scheme" content="only light">
+      <title>Your order is dispatched from SHARNA</title>
+      <style>
+        :root {
+          color-scheme: only light;
+          supported-color-schemes: only light;
+        }
+      </style>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #FAF7F2; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #1E1915;">
+      
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color: #FAF7F2; padding: 25px 10px 40px 10px; width: 100%;">
+        <tr>
+          <td align="center">
+            
+            <!-- MAIN CARD (Max 520px) -->
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 520px; background-color: #FFFFFF; border-radius: 14px; border: 1px solid #EAE1D5; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05);">
+              
+              <!-- BRAND HEADER BANNER WITH OFFICIAL SHARNA LOGO -->
+              <tr>
+                <td align="center" style="background-color: #181412; padding: 28px 20px 24px; border-bottom: 2px solid #C5A86B;">
+                  <img src="https://res.cloudinary.com/fcmtpwwu/image/upload/v1788374485/sharna_brand/sharna_official_logo.png" alt="SHARNA" width="160" style="width: 160px; max-width: 180px; height: auto; display: block; margin: 0 auto; filter: brightness(0) invert(1);" />
+                </td>
+              </tr>
+
+              <!-- CARD BODY -->
+              <tr>
+                <td style="padding: 30px 24px; text-align: left;">
+                  
+                  <!-- DISPATCH STATUS BADGE -->
+                  <div style="text-align: center; margin-bottom: 20px;">
+                    <span style="font-size: 11px; font-weight: 700; color: #FFFFFF; background-color: #0E9F6E; padding: 6px 16px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.08em; display: inline-block;">
+                      🚚 ORDER DISPATCHED
+                    </span>
+                    <h2 style="font-size: 21px; font-weight: 700; color: #1E1915; margin: 14px 0 4px 0;">Your order is dispatched from SHARNA</h2>
+                    <div style="font-size: 12.5px; color: #7A6960;">Order Reference: <strong>#${displayOrderId}</strong></div>
+                  </div>
+
+                  <div style="border-bottom: 1px solid #EAE1D5; margin-bottom: 22px;"></div>
+
+                  <!-- GREETING & MESSAGE -->
+                  <div style="margin-bottom: 22px;">
+                    <div style="font-size: 15px; font-weight: 700; color: #1E1915;">Hello ${formattedCustomerName},</div>
+                    <div style="font-size: 13.5px; color: #5C4E46; margin-top: 6px; line-height: 1.55;">
+                      Your order has been dispatched from SHARNA.
+                    </div>
+                  </div>
+
+                  <!-- ESTIMATED DELIVERY WINDOW -->
+                  <div style="background-color: #FAF4EB; border: 1.5px solid #C5A86B; border-radius: 12px; padding: 18px; margin-bottom: 24px; text-align: center;">
+                    <span style="font-size: 10.5px; font-weight: 800; color: #8C6B28; letter-spacing: 0.12em; text-transform: uppercase; display: block; margin-bottom: 6px;">
+                      ⏱️ ESTIMATED DELIVERY TIME
+                    </span>
+                    <div style="font-size: 17px; font-weight: 800; color: #1E1915; margin-bottom: 4px;">
+                      7 to 10 Days
+                    </div>
+                    <div style="font-size: 12.5px; color: #5C4E46; font-weight: 600;">
+                      Expected Delivery: <span style="color: #0E9F6E;">${deliveryWindowStr}</span>
+                    </div>
+                  </div>
+
+                  <!-- ITEMS LIST -->
+                  <div style="margin-bottom: 20px;">
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: #8C6B28; font-weight: 700; margin-bottom: 10px;">ORDER ITEMS</div>
+                    <table width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse: collapse;">
+                      <tbody>
+                        ${itemsRows}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div style="border-bottom: 1px solid #EAE1D5; margin: 20px 0;"></div>
+
+                  <!-- DEDICATED DELIVERY CONCIERGE & SUPPORT ASSISTANCE -->
+                  <div style="background-color: #FAF7F2; border: 1.5px solid #E5D5C3; border-radius: 12px; padding: 18px; text-align: center; margin-bottom: 10px;">
+                    <span style="font-size: 11px; font-weight: 800; color: #1E1915; letter-spacing: 0.08em; text-transform: uppercase; display: block; margin-bottom: 6px;">
+                      📞 QUESTIONS REGARDING YOUR DELIVERY?
+                    </span>
+                    <p style="font-size: 12.5px; color: #5C4E46; margin: 0 0 14px 0; line-height: 1.5;">
+                      For any questions or delivery support, connect with us:
+                    </p>
+
+                    <table width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td align="center" style="padding: 4px 6px;">
+                          <a href="https://wa.me/916268218135?text=Hello%20SHARNA,%20I%20have%20a%20question%20regarding%20my%20dispatched%20order%20%23${displayOrderId}" target="_blank" style="display: inline-block; padding: 10px 18px; background-color: #25D366; color: #FFFFFF !important; text-decoration: none; border-radius: 20px; font-size: 11.5px; font-weight: 700;">
+                            💬 WhatsApp / Call: +91 62682 18135
+                          </a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td align="center" style="padding: 4px 6px;">
+                          <a href="mailto:sharnaapparels@gmail.com?subject=Delivery%20Inquiry%20for%20Order%20%23${displayOrderId}" style="display: inline-block; padding: 10px 18px; background-color: #181412; color: #C5A86B !important; text-decoration: none; border-radius: 20px; font-size: 11.5px; font-weight: 700;">
+                            ✉️ sharnaapparels@gmail.com
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+
+                </td>
+              </tr>
+            </table>
+
+            <!-- FOOTER -->
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width: 520px; margin-top: 20px; text-align: center;">
+              <tr>
+                <td align="center" style="font-size: 11px; color: #7A6960;">
+                  <p style="margin: 0; line-height: 1.6;">
+                    <strong>SHARNA</strong> • Customer Support: +91 62682 18135 • sharnaapparels@gmail.com
+                  </p>
+                </td>
+              </tr>
+            </table>
+
+          </td>
+        </tr>
+      </table>
+
+    </body>
+    </html>
+  `;
+
+  return sendResendEmail({
+    to: targetEmail,
+    subject: `Your order is dispatched from SHARNA (Delivery: 7-10 Days)`,
+    html: htmlContent
+  });
+};
+
+/**
  * Password Reset / Verification OTP Email Template
  */
 const sendPasswordResetEmail = async (email, otpCode) => {
@@ -661,6 +904,7 @@ const sendWishlistReminderEmail = async (email, { name, items = [] }) => {
 module.exports = {
   sendResendEmail,
   sendEmailInvoice,
+  sendOrderDispatchedEmail,
   sendPasswordResetEmail,
   sendAdmin2FAEmail,
   sendWishlistReminderEmail

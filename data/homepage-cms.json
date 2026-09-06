@@ -1,25 +1,25 @@
 {
-  "updatedAt": "2026-09-03T03:07:45.721Z",
+  "updatedAt": "2026-09-06T04:27:45.560Z",
   "heroSlides": [
     {
       "id": "slide-1788404362830",
       "title": "",
-      "imageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788404415882-464596830.webp",
+      "imageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788457591798-51229390.webp",
       "linkPath": "/collections",
       "subtitle": "",
       "buttonText": "SHOP COLLECTION",
-      "mobileImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788404456544-652875904.webp",
-      "desktopImageUrl": ""
+      "mobileImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788457663572-618460938.webp",
+      "desktopImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788457591798-51229390.webp"
     },
     {
       "id": "slide-1788404366253",
       "title": "",
-      "imageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788404493360-33049685.webp",
+      "imageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788457733236-191284018.webp",
       "linkPath": "/collections",
       "subtitle": "",
       "buttonText": "SHOP COLLECTION",
-      "mobileImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788404518583-766988923.webp",
-      "desktopImageUrl": ""
+      "mobileImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788457794019-649548416.webp",
+      "desktopImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_products-1788457733236-191284018.webp"
     }
   ],
   "testimonials": [
@@ -94,22 +94,41 @@
   ],
   "bestSellersProductIds": [
     "cmt72xrvp0000pd014vcdeyzm",
-    "cmt79bxnc0000vsv8bc9avcis",
-    "cmtk95alj001coa01owbb0v29"
+    "cmt71n3ze0000vs2okv99zlph",
+    "cmt0hjmw20000vsm8huvbrryv",
+    "cmtlr5dpk0029ld01nmulp071",
+    "cmtlsfdju002pld017lc1ms6b",
+    "cmtmpr0pf001hnq01fulogo0v",
+    "cmtmqywdf001nnq01ifu55sjs"
   ],
   "newArrivalsProductIds": [
     "cmt0hjmw20000vsm8huvbrryv",
     "cmt71n3ze0000vs2okv99zlph",
     "cmt72xrvp0000pd014vcdeyzm",
-    "cmt79bxnc0000vsv8bc9avcis"
+    "cmtlsfdju002pld017lc1ms6b",
+    "cmtlq7nnu001uld01edvt1ggf",
+    "cmtmpr0pf001hnq01fulogo0v",
+    "cmtmqywdf001nnq01ifu55sjs",
+    "cmtmr4yfl001tnq01agqytcz1",
+    "cmtmwidhm0026nq01kiy4k7y9",
+    "cmtmwolhd002enq01kwjlwpir",
+    "cmtmwwnkw002nnq01jx5iqrhq",
+    "cmtmxgh65003bnq01pt3nr2sj",
+    "cmtlrbkew002gld01khpcgu2k",
+    "cmtlqlenj0021ld01rkzp9tni",
+    "cmtmy5lri004cnq010l72sy49",
+    "cmtmyrzgw004pnq01unyuaaqd"
   ],
   "readyToShipProductIds": [
     "cmt0hjmw20000vsm8huvbrryv",
-    "cmtk95alj001coa01owbb0v29"
-  ],
-  "celebrityClosetProductIds": [
-    "cmt79bxnc0000vsv8bc9avcis",
     "cmt72xrvp0000pd014vcdeyzm",
-    "cmt71n3ze0000vs2okv99zlph"
-  ]
+    "cmt71n3ze0000vs2okv99zlph",
+    "cmtmqywdf001nnq01ifu55sjs",
+    "cmtmr4yfl001tnq01agqytcz1",
+    "cmtmwidhm0026nq01kiy4k7y9",
+    "cmtmwolhd002enq01kwjlwpir",
+    "cmtmwwnkw002nnq01jx5iqrhq",
+    "cmtmxovg8003jnq01eh1aq9gy"
+  ],
+  "celebrityClosetProductIds": []
 }

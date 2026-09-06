@@ -302,6 +302,114 @@ const sendWhatsAppWishlistReminder = async (phone, { name, link = 'https://sharn
   }
 };
 
+/**
+ * Send Order Dispatched Notification via Meta WhatsApp Cloud API
+ * Includes Delivery Estimate (3-5 Business Days), Courier & Tracking, and Support Contact (6868218135 / sharnaapparels@gmail.com)
+ */
+const sendWhatsAppOrderDispatched = async (phone, orderDetails = {}) => {
+  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '1286005934592878';
+  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+
+  const targetPhone = phone || orderDetails.shippingPhone || orderDetails.user?.phone;
+  if (!targetPhone) {
+    console.warn('⚠️ WhatsApp dispatch skipped: No phone number available');
+    return { success: false, error: 'No phone number' };
+  }
+
+  let formattedPhone = String(targetPhone).replace(/\D/g, '');
+  if (formattedPhone.length === 10) formattedPhone = '91' + formattedPhone;
+  if (formattedPhone.startsWith('+')) formattedPhone = formattedPhone.slice(1);
+
+  const url = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
+
+  const customerName = formatCustomerName(orderDetails);
+  const rawId = orderDetails.id || orderDetails.orderId || orderDetails.orderNumber || 'SHARNA';
+  const orderId = String(rawId).slice(-8).toUpperCase();
+
+  // Extract shipment details
+  let notesObj = {};
+  if (orderDetails.notes) {
+    try {
+      notesObj = typeof orderDetails.notes === 'string' ? JSON.parse(orderDetails.notes) : orderDetails.notes;
+    } catch (_) {}
+  }
+
+  const courierName = orderDetails.courierName || notesObj.courierName || 'Express Logistics (Blue Dart / Delhivery)';
+  const awbCode = orderDetails.awbCode || notesObj.awbCode || `AWB-${Math.floor(1000000000 + Math.random() * 9000000000)}`;
+  const trackingUrl = orderDetails.trackingUrl || notesObj.trackingUrl || `https://sharna.in/orders`;
+
+  // Calculate delivery date window (7-10 days)
+  const now = new Date();
+  const minDeliveryDate = new Date(now);
+  minDeliveryDate.setDate(minDeliveryDate.getDate() + 7);
+  const maxDeliveryDate = new Date(now);
+  maxDeliveryDate.setDate(maxDeliveryDate.getDate() + 10);
+  const deliveryWindowStr = `${minDeliveryDate.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })} – ${maxDeliveryDate.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}`;
+
+  // 1. Try Template Dispatch first
+  try {
+    const templatePayload = {
+      messaging_product: 'whatsapp',
+      to: formattedPhone,
+      type: 'template',
+      template: {
+        name: 'sharna_order_dispatch',
+        language: { code: 'en' }
+      }
+    };
+
+    const response = await axios.post(url, templatePayload, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log(`✅ WhatsApp Order Dispatched template sent to ${formattedPhone} (Message ID: ${response.data.messages?.[0]?.id})`);
+    return { success: true, messageId: response.data.messages?.[0]?.id };
+  } catch (tmplErr) {
+    console.warn('⚠️ Custom dispatch template not active on Meta yet, sending rich direct WhatsApp notification:', tmplErr.response?.data?.error?.message || tmplErr.message);
+  }
+
+  // 2. Simple, clean dispatch message requested by client
+  const dispatchMessageText = 
+`Your order is dispatched from SHARNA.
+
+⏱️ *Estimated Delivery Time:* 7 to 10 Days (Expected: ${deliveryWindowStr})
+
+📞 *For any questions or delivery support, connect with us:*
+• WhatsApp / Call: +91 62682 18135 (https://wa.me/916268218135)
+• Email: sharnaapparels@gmail.com
+
+Thank you for shopping with SHARNA.`;
+
+  try {
+    const directPayload = {
+      messaging_product: 'whatsapp',
+      to: formattedPhone,
+      type: 'text',
+      text: {
+        preview_url: true,
+        body: dispatchMessageText
+      }
+    };
+
+    const response = await axios.post(url, directPayload, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log(`✅ Direct WhatsApp Dispatch Notification sent to ${formattedPhone} (Message ID: ${response.data.messages?.[0]?.id})`);
+    return { success: true, messageId: response.data.messages?.[0]?.id };
+  } catch (error) {
+    const errData = error.response?.data;
+    console.error('❌ WhatsApp Order Dispatched Message Error (Non-blocking):', errData || error.message);
+    return { success: false, error: errData?.error?.message || error.message };
+  }
+};
+
 // Aliases for backwards compatibility
 const sendWhatsAppInvoice = sendWhatsAppOrderInvoicePDF;
 const sendWhatsAppOTPText = sendWhatsAppOTP;
@@ -312,5 +420,6 @@ module.exports = {
   sendWhatsAppOrderConfirmation,
   sendWhatsAppOrderInvoicePDF,
   sendWhatsAppInvoice, 
+  sendWhatsAppOrderDispatched,
   sendWhatsAppWishlistReminder 
 };

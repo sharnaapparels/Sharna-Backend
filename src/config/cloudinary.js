@@ -1,20 +1,19 @@
+require('dotenv').config();
 const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
 // Configure Cloudinary Credentials
-const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-const apiKey = process.env.CLOUDINARY_API_KEY;
-const apiSecret = process.env.CLOUDINARY_API_SECRET;
+const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'fcmtpwwu';
+const apiKey = process.env.CLOUDINARY_API_KEY || '535517718434342';
+const apiSecret = process.env.CLOUDINARY_API_SECRET || '0zIKzmTNKmZVZ9MmdEfahZlOuiE';
 
-if (cloudName && apiKey && apiSecret) {
-  cloudinary.config({
-    cloud_name: cloudName,
-    api_key: apiKey,
-    api_secret: apiSecret
-  });
-}
+cloudinary.config({
+  cloud_name: cloudName,
+  api_key: apiKey,
+  api_secret: apiSecret
+});
 
 // Ensure local uploads directory exists
 const uploadsDir = path.join(__dirname, '../../public/uploads');

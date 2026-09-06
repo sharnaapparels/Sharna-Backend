@@ -19,15 +19,16 @@ const generateInvoiceHTML = (order = {}) => {
     year: 'numeric'
   });
 
-  const customerName = parsedNotes.shippingName || order.shippingAddress?.fullName || order.user?.name || 'Mr. Priyanshu Lokhande';
-  const customerEmail = parsedNotes.shippingEmail || order.user?.email || 'priyanshulokhande72@gmail.com';
-  const customerPhone = parsedNotes.shippingPhone || order.shippingAddress?.phone || order.user?.phone || '+91 7999715256';
+  const customerName = parsedNotes.shippingName || order.shippingName || order.shippingAddress?.fullName || order.shippingAddress?.name || order.user?.name || 'Valued Patron';
+  const customerEmail = parsedNotes.shippingEmail || order.shippingEmail || order.shippingAddress?.email || order.user?.email || 'customer@sharna.in';
+  let customerPhone = parsedNotes.shippingPhone || order.shippingPhone || order.shippingAddress?.phone || order.user?.phone || '+91 9999999999';
+  if (customerPhone && !customerPhone.startsWith('+')) customerPhone = '+91 ' + customerPhone.replace(/\D/g, '').slice(-10);
 
-  const street = order.shippingAddress?.streetAddress || order.shippingStreet || 'At, post';
-  const city = order.shippingAddress?.city || order.shippingCity || 'Khedi Sawligarh';
-  const state = order.shippingAddress?.state || order.shippingState || 'Madhya Pradesh';
-  const pincode = order.shippingAddress?.postalCode || order.shippingPostalCode || '460225';
-  const country = order.shippingAddress?.country || order.shippingCountry || 'India';
+  const street = order.shippingStreet || order.shippingAddress?.streetAddress || order.shippingAddress?.street || parsedNotes.shippingStreet || 'Main Road';
+  const city = order.shippingCity || order.shippingAddress?.city || parsedNotes.shippingCity || 'Jabalpur';
+  const state = order.shippingState || order.shippingAddress?.state || parsedNotes.shippingState || 'Madhya Pradesh';
+  const pincode = order.shippingPostalCode || order.shippingAddress?.postalCode || parsedNotes.shippingPostalCode || '482001';
+  const country = order.shippingCountry || order.shippingAddress?.country || parsedNotes.shippingCountry || 'India';
 
   const totalAmount = Number(order.totalAmount || 0);
   const shippingAmount = Number(order.shippingAmount || 0);

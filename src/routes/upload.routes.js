@@ -10,33 +10,32 @@ const sharp = require('sharp');
 const uploadFileToCloudinaryOrDisk = async (req, file, folderName = 'sharna_uploads') => {
   if (!file || !file.buffer) return null;
 
-  // 1. Try Cloudinary direct buffer stream upload with eager CDN pre-warming
-  if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
-    try {
-      const uploadStreamResult = await new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          {
-            folder: folderName,
-            resource_type: 'image',
-            eager_async: true,
-            eager: [
-              { width: 1920, crop: 'limit', quality: 'auto:good', fetch_format: 'auto' },
-              { width: 1080, crop: 'limit', quality: 'auto:good', fetch_format: 'auto' }
-            ]
-          },
-          (error, result) => {
-            if (error) return reject(error);
-            resolve(result);
-          }
-        );
-        stream.end(file.buffer);
-      });
-      if (uploadStreamResult && uploadStreamResult.secure_url) {
-        return uploadStreamResult.secure_url;
-      }
-    } catch (cErr) {
-      console.warn('Cloudinary upload_stream fallback to local disk:', cErr.message);
+  // 1. Ensure Cloudinary is configured
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'fcmtpwwu',
+    api_key: process.env.CLOUDINARY_API_KEY || '535517718434342',
+    api_secret: process.env.CLOUDINARY_API_SECRET || '0zIKzmTNKmZVZ9MmdEfahZlOuiE'
+  });
+
+  try {
+    const uploadStreamResult = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: folderName,
+          resource_type: 'image'
+        },
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result);
+        }
+      );
+      stream.end(file.buffer);
+    });
+    if (uploadStreamResult && uploadStreamResult.secure_url) {
+      return uploadStreamResult.secure_url;
     }
+  } catch (cErr) {
+    console.warn('Cloudinary upload_stream fallback to local disk:', cErr.message);
   }
 
   // 2. Fallback to local disk storage with Sharp AVIF & WebP optimization

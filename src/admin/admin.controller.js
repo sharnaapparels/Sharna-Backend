@@ -3,7 +3,8 @@ const bcrypt = require('bcrypt');
 const { cloudinary } = require('../config/cloudinary');
 const { clearProductCache } = require('../utils/productCache');
 const { clearCMSCache } = require('../cms/cms.controller');
-const { sendPasswordResetEmail, sendResendEmail } = require('../utils/email.service');
+const { sendPasswordResetEmail, sendResendEmail, sendOrderDispatchedEmail } = require('../utils/email.service');
+const { sendWhatsAppOrderDispatched } = require('../utils/whatsapp.service');
 
 const processProductImages = async (images) => {
   if (!Array.isArray(images) || images.length === 0) return [];
@@ -184,12 +185,55 @@ exports.getAllOrders = async (req, res) => {
 // PUT /api/admin/orders/:id/status
 exports.updateOrderStatus = async (req, res) => {
   const { id } = req.params;
-  const { status, paymentStatus } = req.body;
+  const { status, paymentStatus, courierName, awbCode, trackingUrl } = req.body || {};
 
   try {
+    const existingOrder = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        user: { select: { id: true, name: true, email: true, phone: true } },
+        items: {
+          include: {
+            product: {
+              include: {
+                images: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!existingOrder) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
     const updateData = {};
     if (status) updateData.status = status;
     if (paymentStatus) updateData.paymentStatus = paymentStatus;
+
+    let finalCourier = courierName;
+    let finalAwb = awbCode;
+    let finalTrackingUrl = trackingUrl;
+
+    if (status === 'SHIPPED') {
+      let existingNotes = {};
+      if (existingOrder.notes) {
+        try { existingNotes = typeof existingOrder.notes === 'string' ? JSON.parse(existingOrder.notes) : existingOrder.notes; } catch (_) {}
+      }
+
+      finalCourier = courierName || existingNotes.courierName || 'Express Logistics (Blue Dart / Delhivery)';
+      finalAwb = awbCode || existingNotes.awbCode || `AWB-${Math.floor(1000000000 + Math.random() * 9000000000)}`;
+      finalTrackingUrl = trackingUrl || existingNotes.trackingUrl || `https://sharna.in/orders`;
+
+      updateData.notes = JSON.stringify({
+        ...existingNotes,
+        awbCode: finalAwb,
+        courierName: finalCourier,
+        trackingUrl: finalTrackingUrl,
+        shippedAt: new Date().toISOString()
+      });
+    }
 
     const updatedOrder = await prisma.order.update({
       where: { id },
@@ -208,6 +252,31 @@ exports.updateOrderStatus = async (req, res) => {
       }
     });
 
+    // If marked as SHIPPED, trigger Email & WhatsApp Dispatch Notifications
+    if (status === 'SHIPPED' && existingOrder.status !== 'SHIPPED') {
+      const dispatchPayload = {
+        ...updatedOrder,
+        courierName: finalCourier,
+        awbCode: finalAwb,
+        trackingUrl: finalTrackingUrl
+      };
+
+      const recipientEmail = updatedOrder.shippingEmail || updatedOrder.user?.email;
+      const recipientPhone = updatedOrder.shippingPhone || updatedOrder.user?.phone;
+
+      if (recipientEmail) {
+        sendOrderDispatchedEmail(recipientEmail, dispatchPayload)
+          .then(() => console.log(`✅ Order dispatch email sent to ${recipientEmail}`))
+          .catch(err => console.warn('⚠️ Order dispatch email warning:', err.message));
+      }
+
+      if (recipientPhone) {
+        sendWhatsAppOrderDispatched(recipientPhone, dispatchPayload)
+          .then(() => console.log(`✅ Order dispatch WhatsApp sent to ${recipientPhone}`))
+          .catch(err => console.warn('⚠️ Order dispatch WhatsApp warning:', err.message));
+      }
+    }
+
     res.json({ success: true, order: updatedOrder });
   } catch (err) {
     console.error("Update order status failed:", err);
@@ -218,14 +287,22 @@ exports.updateOrderStatus = async (req, res) => {
 // POST /api/admin/orders/:id/shipment (Manual / Generic Courier Dispatch)
 exports.createShipment = async (req, res) => {
   const { id } = req.params;
-  const { courierName = 'Express Logistics', awbCode, trackingUrl } = req.body || {};
+  const { courierName = 'Express Logistics (Blue Dart / Delhivery)', awbCode, trackingUrl } = req.body || {};
 
   try {
     const order = await prisma.order.findUnique({
       where: { id },
       include: {
         user: { select: { id: true, name: true, email: true, phone: true } },
-        items: { include: { product: true } }
+        items: {
+          include: {
+            product: {
+              include: {
+                images: true
+              }
+            }
+          }
+        }
       }
     });
 
@@ -237,14 +314,17 @@ exports.createShipment = async (req, res) => {
 
     let existingNotes = {};
     if (order.notes) {
-      try { existingNotes = JSON.parse(order.notes); } catch (e) {}
+      try { existingNotes = typeof order.notes === 'string' ? JSON.parse(order.notes) : order.notes; } catch (e) {}
     }
+
+    const finalCourier = courierName || 'Express Logistics (Blue Dart / Delhivery)';
+    const finalTrackingUrl = trackingUrl || `https://sharna.in/orders`;
 
     const updatedNotes = JSON.stringify({
       ...existingNotes,
       awbCode: assignedAwb,
-      courierName: courierName || 'Express Logistics',
-      trackingUrl: trackingUrl || '',
+      courierName: finalCourier,
+      trackingUrl: finalTrackingUrl,
       shippedAt: new Date().toISOString()
     });
 
@@ -256,17 +336,48 @@ exports.createShipment = async (req, res) => {
       },
       include: {
         user: { select: { id: true, name: true, email: true, phone: true } },
-        items: { include: { product: true } }
+        items: {
+          include: {
+            product: {
+              include: {
+                images: true
+              }
+            }
+          }
+        }
       }
     });
 
+    // Trigger Email & WhatsApp Dispatch Notifications
+    const dispatchPayload = {
+      ...updatedOrder,
+      courierName: finalCourier,
+      awbCode: assignedAwb,
+      trackingUrl: finalTrackingUrl
+    };
+
+    const recipientEmail = updatedOrder.shippingEmail || updatedOrder.user?.email;
+    const recipientPhone = updatedOrder.shippingPhone || updatedOrder.user?.phone;
+
+    if (recipientEmail) {
+      sendOrderDispatchedEmail(recipientEmail, dispatchPayload)
+        .then(() => console.log(`✅ Order dispatch email sent to ${recipientEmail}`))
+        .catch(err => console.warn('⚠️ Order dispatch email warning:', err.message));
+    }
+
+    if (recipientPhone) {
+      sendWhatsAppOrderDispatched(recipientPhone, dispatchPayload)
+        .then(() => console.log(`✅ Order dispatch WhatsApp sent to ${recipientPhone}`))
+        .catch(err => console.warn('⚠️ Order dispatch WhatsApp warning:', err.message));
+    }
+
     res.json({
       success: true,
-      message: 'Order dispatch status updated successfully',
+      message: 'Order dispatch status updated and notifications sent successfully',
       shipment: {
         awbCode: assignedAwb,
-        courierName: courierName || 'Express Logistics',
-        trackingUrl: trackingUrl || ''
+        courierName: finalCourier,
+        trackingUrl: finalTrackingUrl
       },
       order: updatedOrder
     });

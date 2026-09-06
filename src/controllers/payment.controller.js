@@ -170,13 +170,13 @@ const triggerInvoiceNotifications = async (orderId) => {
       return;
     }
 
-    let shippingName = orderWithDetails.user.name;
-    let shippingEmail = orderWithDetails.user.email;
-    let shippingPhone = orderWithDetails.user.phone;
+    let shippingName = '';
+    let shippingEmail = '';
+    let shippingPhone = '';
 
     if (orderWithDetails.notes) {
       try {
-        const parsedNotes = JSON.parse(orderWithDetails.notes);
+        const parsedNotes = typeof orderWithDetails.notes === 'string' ? JSON.parse(orderWithDetails.notes) : orderWithDetails.notes;
         if (parsedNotes.shippingName) shippingName = parsedNotes.shippingName;
         if (parsedNotes.shippingEmail) shippingEmail = parsedNotes.shippingEmail;
         if (parsedNotes.shippingPhone) shippingPhone = parsedNotes.shippingPhone;
@@ -185,16 +185,23 @@ const triggerInvoiceNotifications = async (orderId) => {
       }
     }
 
+    if (!shippingName) shippingName = orderWithDetails.user?.name || 'Valued Patron';
+    if (!shippingEmail) shippingEmail = orderWithDetails.user?.email || 'customer@sharna.in';
+    if (!shippingPhone) shippingPhone = orderWithDetails.user?.phone || '';
+
     const orderDetails = {
       orderId: orderWithDetails.id,
       totalAmount: orderWithDetails.totalAmount,
       shippingAmount: orderWithDetails.shippingAmount || 0,
       shippingName,
+      shippingEmail,
+      shippingPhone,
       shippingStreet: orderWithDetails.shippingStreet || '',
       shippingCity: orderWithDetails.shippingCity || '',
       shippingState: orderWithDetails.shippingState || '',
       shippingPostalCode: orderWithDetails.shippingPostalCode || '',
       shippingCountry: orderWithDetails.shippingCountry || 'India',
+      notes: orderWithDetails.notes,
       items: orderWithDetails.items.map(item => ({
         title: item.product?.title || 'Luxury Product',
         price: item.price,

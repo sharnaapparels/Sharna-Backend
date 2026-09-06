@@ -104,35 +104,39 @@ exports.downloadInvoicePDF = async (req, res) => {
       });
     }
 
-    // If order not found or test requested, construct clean order structure matching template
+    // If order not found, return 404 error
     if (!order) {
-      order = {
-        id: id || 'cmt0oadp90001pq01op2l5ili',
-        orderNumber: id || 'cmt0oadp90001pq01op2l5ili',
-        createdAt: new Date(),
-        totalAmount: 18500,
-        shippingAmount: 0,
-        notes: JSON.stringify({
-          shippingName: 'Mr.priyanshu lokhande',
-          shippingEmail: 'priyanshulokhande72@gmail.com',
-          shippingPhone: '7999715256'
-        }),
-        user: { name: 'Mr.priyanshu lokhande', email: 'priyanshulokhande72@gmail.com', phone: '7999715256' },
-        shippingStreet: 'At, post',
-        shippingCity: 'Khedi Sawligarh',
-        shippingState: 'Madhya Pradesh',
-        shippingPostalCode: '460225',
-        shippingCountry: 'India',
-        items: [
-          {
-            title: 'Blush Toga Co-ord Set (2 Pcs)',
-            quantity: 1,
-            price: 18500,
-            size: 'M',
-            color: 'green'
-          }
-        ]
-      };
+      if (id === 'test' || id === 'sample') {
+        order = {
+          id: 'SAMPLE-ORDER-1001',
+          orderNumber: 'SAMPLE-ORDER-1001',
+          createdAt: new Date(),
+          totalAmount: 1850,
+          shippingAmount: 0,
+          notes: JSON.stringify({
+            shippingName: 'Valued Customer',
+            shippingEmail: 'customer@sharna.in',
+            shippingPhone: '+91 9999999999'
+          }),
+          user: { name: 'Valued Customer', email: 'customer@sharna.in', phone: '9999999999' },
+          shippingStreet: 'Main Commercial Hub',
+          shippingCity: 'Jabalpur',
+          shippingState: 'Madhya Pradesh',
+          shippingPostalCode: '482001',
+          shippingCountry: 'India',
+          items: [
+            {
+              title: 'Luxury Ethnic Outfit',
+              quantity: 1,
+              price: 1850,
+              size: 'M',
+              color: 'Default'
+            }
+          ]
+        };
+      } else {
+        return res.status(404).json({ success: false, message: 'Order not found' });
+      }
     }
 
     // Attach shipping address helper for generator
@@ -176,7 +180,7 @@ exports.viewInvoiceHTML = async (req, res) => {
 
   try {
     let order = null;
-    if (id && id !== 'test') {
+    if (id && id !== 'test' && id !== 'sample') {
       order = await prisma.order.findFirst({
         where: {
           OR: [{ id: id }, { razorpayOrderId: id }]
@@ -189,33 +193,37 @@ exports.viewInvoiceHTML = async (req, res) => {
     }
 
     if (!order) {
-      order = {
-        id: id || 'cmt1cuunj0001vs1k40h8jtwb',
-        orderNumber: id || 'cmt1cuunj0001vs1k40h8jtwb',
-        createdAt: new Date(),
-        totalAmount: 1800,
-        shippingAmount: 0,
-        notes: JSON.stringify({
-          shippingName: 'Mr.priyanshu lokhande',
-          shippingEmail: 'priyanshulokhande72@gmail.com',
-          shippingPhone: '7999715256'
-        }),
-        user: { name: 'Mr.priyanshu lokhande', email: 'priyanshulokhande72@gmail.com', phone: '7999715256' },
-        shippingStreet: 'NH548C',
-        shippingCity: 'Khedi Sawligarh',
-        shippingState: 'Madhya Pradesh',
-        shippingPostalCode: '460001',
-        shippingCountry: 'India',
-        items: [
-          {
-            title: 'corod set in purple',
-            quantity: 1,
-            price: 1800,
-            size: 'XS',
-            color: 'Pink'
-          }
-        ]
-      };
+      if (id === 'test' || id === 'sample') {
+        order = {
+          id: 'SAMPLE-ORDER-1001',
+          orderNumber: 'SAMPLE-ORDER-1001',
+          createdAt: new Date(),
+          totalAmount: 1800,
+          shippingAmount: 0,
+          notes: JSON.stringify({
+            shippingName: 'Valued Customer',
+            shippingEmail: 'customer@sharna.in',
+            shippingPhone: '+91 9999999999'
+          }),
+          user: { name: 'Valued Customer', email: 'customer@sharna.in', phone: '9999999999' },
+          shippingStreet: 'Main Commercial Hub',
+          shippingCity: 'Jabalpur',
+          shippingState: 'Madhya Pradesh',
+          shippingPostalCode: '482001',
+          shippingCountry: 'India',
+          items: [
+            {
+              title: 'Luxury Ethnic Outfit',
+              quantity: 1,
+              price: 1800,
+              size: 'M',
+              color: 'Default'
+            }
+          ]
+        };
+      } else {
+        return res.status(404).send('<h2>Order Not Found</h2>');
+      }
     }
 
     const html = generateInvoiceHTML(order);

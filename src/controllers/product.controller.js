@@ -125,6 +125,7 @@ exports.getAllProducts = async (req, res) => {
         isPlusSize: isCollectionsPage,
         sizes: dbSizes.length > 0 ? dbSizes : ['XS', 'S', 'M', 'L', 'XL'],
         colors: dbColors.length > 0 ? dbColors : ['Beige'],
+        image: p.images && p.images.length > 0 ? p.images[0].url : '',
         images: p.images || []
       };
     });
@@ -236,6 +237,7 @@ exports.getProductBySlug = async (req, res) => {
       isPlusSize: isCollectionsPage,
       sizes: dbSizes.length > 0 ? dbSizes : ['XS', 'S', 'M', 'L', 'XL'],
       colors: dbColors.length > 0 ? dbColors : ['Beige'],
+      image: images && images.length > 0 ? images[0].url : '',
       images,
       variants,
       reviews
