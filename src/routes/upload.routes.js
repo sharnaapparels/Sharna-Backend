@@ -18,24 +18,17 @@ const uploadFileToCloudinaryOrDisk = async (req, file, folderName = 'sharna_uplo
   });
 
   try {
-    const uploadStreamResult = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder: folderName,
-          resource_type: 'image'
-        },
-        (error, result) => {
-          if (error) return reject(error);
-          resolve(result);
-        }
-      );
-      stream.end(file.buffer);
+    const b64 = Buffer.from(file.buffer).toString('base64');
+    const dataUri = `data:${file.mimetype || 'image/png'};base64,${b64}`;
+    const result = await cloudinary.uploader.upload(dataUri, {
+      folder: folderName,
+      resource_type: 'image'
     });
-    if (uploadStreamResult && uploadStreamResult.secure_url) {
-      return uploadStreamResult.secure_url;
+    if (result && result.secure_url) {
+      return result.secure_url;
     }
   } catch (cErr) {
-    console.warn('Cloudinary upload_stream fallback to local disk:', cErr.message);
+    console.warn('Cloudinary upload fallback to local disk:', cErr.message);
   }
 
   // 2. Fallback to local disk storage with Sharp AVIF & WebP optimization
