@@ -17,6 +17,30 @@ const uploadFileToCloudinaryOrDisk = async (req, file, folderName = 'sharna_uplo
     api_secret: process.env.CLOUDINARY_API_SECRET || '0zIKzmTNKmZVZ9MmdEfahZlOuiE'
   });
 
+  // 1. Primary: Direct Stream Upload (Handles high-res files without timeout)
+  try {
+    const streamResult = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: folderName,
+          resource_type: 'image'
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      uploadStream.end(file.buffer);
+    });
+
+    if (streamResult && streamResult.secure_url) {
+      return streamResult.secure_url;
+    }
+  } catch (streamErr) {
+    console.warn('Cloudinary upload_stream attempt notice:', streamErr.message);
+  }
+
+  // 2. Secondary: Base64 data URI upload
   try {
     const b64 = Buffer.from(file.buffer).toString('base64');
     const dataUri = `data:${file.mimetype || 'image/png'};base64,${b64}`;
@@ -28,7 +52,7 @@ const uploadFileToCloudinaryOrDisk = async (req, file, folderName = 'sharna_uplo
       return result.secure_url;
     }
   } catch (cErr) {
-    console.warn('Cloudinary upload fallback to local disk:', cErr.message);
+    console.warn('Cloudinary base64 upload fallback to local disk:', cErr.message);
   }
 
   // 2. Fallback to local disk storage with Sharp AVIF & WebP optimization

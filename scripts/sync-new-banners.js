@@ -9,9 +9,9 @@ const newHeroSlides = [
     subtitle: '',
     buttonText: 'SHOP COLLECTION',
     linkPath: '/collections',
-    imageUrl: 'https://res.cloudinary.com/fcmtpwwu/image/upload/v1789098738/sharna_banners/ec1bhjbqrb0cematsh2w.webp',
-    desktopImageUrl: 'https://res.cloudinary.com/fcmtpwwu/image/upload/v1789098738/sharna_banners/ec1bhjbqrb0cematsh2w.webp',
-    mobileImageUrl: 'https://res.cloudinary.com/fcmtpwwu/image/upload/v1789098740/sharna_banners/fua4wa7jyjctpncvrazo.webp'
+    imageUrl: 'https://res.cloudinary.com/fcmtpwwu/image/upload/v1789102878/sharna_banners/hero_desktop_1_lux.webp',
+    desktopImageUrl: 'https://res.cloudinary.com/fcmtpwwu/image/upload/v1789102878/sharna_banners/hero_desktop_1_lux.webp',
+    mobileImageUrl: 'https://res.cloudinary.com/fcmtpwwu/image/upload/v1789102878/sharna_banners/hero_mobile_1_lux.webp'
   },
   {
     id: 'slide-2',
@@ -19,9 +19,9 @@ const newHeroSlides = [
     subtitle: '',
     buttonText: 'SHOP COLLECTION',
     linkPath: '/collections',
-    imageUrl: 'https://res.cloudinary.com/fcmtpwwu/image/upload/v1789098741/sharna_banners/pp4mu80e0xqwjovg0zjg.webp',
-    desktopImageUrl: 'https://res.cloudinary.com/fcmtpwwu/image/upload/v1789098741/sharna_banners/pp4mu80e0xqwjovg0zjg.webp',
-    mobileImageUrl: 'https://res.cloudinary.com/fcmtpwwu/image/upload/v1789098744/sharna_banners/wsojnoxbtx8zlsqy08ty.webp'
+    imageUrl: 'https://res.cloudinary.com/fcmtpwwu/image/upload/v1789102879/sharna_banners/hero_desktop_2_lux.webp',
+    desktopImageUrl: 'https://res.cloudinary.com/fcmtpwwu/image/upload/v1789102879/sharna_banners/hero_desktop_2_lux.webp',
+    mobileImageUrl: 'https://res.cloudinary.com/fcmtpwwu/image/upload/v1789102878/sharna_banners/hero_mobile_2_lux.webp'
   }
 ];
 
