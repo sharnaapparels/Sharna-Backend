@@ -1,25 +1,25 @@
 {
-  "updatedAt": "2026-09-11T04:42:54.727Z",
+  "updatedAt": "2026-09-11T05:01:19.146Z",
   "heroSlides": [
     {
-      "id": "slide-1789101508720",
+      "id": "slide-1",
       "title": "",
       "subtitle": "",
       "buttonText": "SHOP COLLECTION",
       "linkPath": "/collections",
-      "imageUrl": "http://localhost:5008/uploads/sharna_banners-1789101579505-606503645.webp",
-      "desktopImageUrl": "http://localhost:5008/uploads/sharna_banners-1789101579505-606503645.webp",
-      "mobileImageUrl": "http://localhost:5008/uploads/sharna_banners-1789101613903-446260756.webp"
+      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1789102878/sharna_banners/hero_desktop_1_lux.webp",
+      "desktopImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1789102878/sharna_banners/hero_desktop_1_lux.webp",
+      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1789102878/sharna_banners/hero_mobile_1_lux.webp"
     },
     {
-      "id": "slide-1789101592523",
+      "id": "slide-2",
       "title": "",
       "subtitle": "",
       "buttonText": "SHOP COLLECTION",
       "linkPath": "/collections",
-      "imageUrl": "http://localhost:5008/uploads/sharna_banners-1789101685765-304489093.webp",
-      "desktopImageUrl": "http://localhost:5008/uploads/sharna_banners-1789101685765-304489093.webp",
-      "mobileImageUrl": "http://localhost:5008/uploads/sharna_banners-1789101761807-918402652.webp"
+      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1789102879/sharna_banners/hero_desktop_2_lux.webp",
+      "desktopImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1789102879/sharna_banners/hero_desktop_2_lux.webp",
+      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1789102878/sharna_banners/hero_mobile_2_lux.webp"
     }
   ],
   "testimonials": [
