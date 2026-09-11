@@ -1,15 +1,25 @@
 {
-  "updatedAt": "2026-09-06T06:10:11.160Z",
+  "updatedAt": "2026-09-11T03:59:48.975Z",
   "heroSlides": [
     {
-      "id": "slide-1788674801131",
+      "id": "slide-1",
       "title": "",
-      "imageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_banners-1788674837602-645879749.webp",
+      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1789098738/sharna_banners/ec1bhjbqrb0cematsh2w.webp",
       "linkPath": "/collections",
       "subtitle": "",
       "buttonText": "SHOP COLLECTION",
-      "mobileImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_banners-1788674880231-661219763.webp",
-      "desktopImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_banners-1788674837602-645879749.webp"
+      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1789098740/sharna_banners/fua4wa7jyjctpncvrazo.webp",
+      "desktopImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1789098738/sharna_banners/ec1bhjbqrb0cematsh2w.webp"
+    },
+    {
+      "id": "slide-2",
+      "title": "",
+      "imageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1789098741/sharna_banners/pp4mu80e0xqwjovg0zjg.webp",
+      "linkPath": "/collections",
+      "subtitle": "",
+      "buttonText": "SHOP COLLECTION",
+      "mobileImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1789098741/sharna_banners/pp4mu80e0xqwjovg0zjg.webp",
+      "desktopImageUrl": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1789098741/sharna_banners/pp4mu80e0xqwjovg0zjg.webp"
     }
   ],
   "testimonials": [
@@ -41,69 +51,69 @@
   "ethnicCategories": [
     {
       "id": "cat-1",
-      "tag": "Anarkalis & Salwars",
+      "tag": "Timeless Indian Elegance",
       "link": "/shop?category=suit-sets",
       "name": "SUIT SETS",
-      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1787658311/sharna_products/sxeopgxcfbdev4pbj6w4.jpg"
+      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1789055591/sharna_banners/rqysbqkzprt0izxzv3vb.jpg"
     },
     {
       "id": "cat-2",
       "tag": "Indo-Western Edits",
       "link": "/shop?category=coord-sets",
       "name": "CO-ORD SETS",
-      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788289027/sharna_products/nuvih2aypp52q1td7lcq.jpg"
+      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1789055601/sharna_banners/daqcqu2cvejjc3lejjju.jpg"
     },
     {
       "id": "cat-3",
-      "tag": "Festive Luxe",
+      "tag": "Flowy silhouttes",
       "link": "/shop?category=dresses",
-      "name": "DRESSES & GOWNS",
+      "name": "DRESSES",
       "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788289045/sharna_products/qeidbflb52istlrqxyd9.jpg"
     },
     {
       "id": "cat-4",
-      "tag": "Everyday Ethnic",
-      "link": "/shop?category=kurtis",
-      "name": "KURTIS",
-      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788289065/sharna_products/iizde2d9uhgsj8r2x2ie.jpg"
+      "tag": "Effortless Every Day Styles",
+      "link": "/shop?category=short-kurtis",
+      "name": "The Kurti Edit",
+      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1789055616/sharna_banners/qsrnxlpjatngjjecwakm.jpg"
     },
     {
       "id": "cat-5",
-      "tag": "Handcrafted Blouses",
+      "tag": "Contemporary Essentials",
       "link": "/shop?category=shirts",
-      "name": "ETHNIC SHIRTS",
-      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788400988/sharna_products/vfn24gkri7jzicoivoeh.jpg"
+      "name": "EVERYDAY SHIRTS",
+      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1789055566/sharna_banners/bkmftwbrbxfkiuz3yc51.jpg"
     },
     {
       "id": "cat-6",
-      "tag": "Heritage Weaves",
+      "tag": "Made for Memorable Moments",
       "link": "/shop?collection=festive-collection",
-      "name": "FESTIVE COLLECTION",
-      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788401023/sharna_products/ecxgxxxha6kzzw9ua8qq.jpg"
+      "name": "THE FESTIVE EDIT",
+      "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1789055632/sharna_banners/rg59dct7rnavjcxzwkqo.jpg"
     }
   ],
   "bestSellersProductIds": [
-    "cmt72xrvp0000pd014vcdeyzm",
-    "cmt71n3ze0000vs2okv99zlph",
-    "cmt0hjmw20000vsm8huvbrryv",
-    "cmtlr5dpk0029ld01nmulp071"
+    "cmtu6fpnq005lnv01l9kae1zu",
+    "cmtpzmnx3003snv018sxt5wq5",
+    "cmtu6ubjx0063nv01w5uhl15z",
+    "cmtvqgzjy008dnv01pz8fg2tw"
   ],
   "newArrivalsProductIds": [
-    "cmt0hjmw20000vsm8huvbrryv",
-    "cmt71n3ze0000vs2okv99zlph",
-    "cmt72xrvp0000pd014vcdeyzm",
-    "cmtlsfdju002pld017lc1ms6b"
+    "cmtmxovg8003jnq01eh1aq9gy",
+    "cmtmxgh65003bnq01pt3nr2sj",
+    "cmtvq9jaw0086nv01khpgtjyc",
+    "cmtq0lz95004anv013fuh291a"
   ],
   "readyToShipProductIds": [
-    "cmt0hjmw20000vsm8huvbrryv",
-    "cmt72xrvp0000pd014vcdeyzm",
-    "cmt71n3ze0000vs2okv99zlph",
-    "cmtmqywdf001nnq01ifu55sjs"
+    "cmtu58832004xnv011w5itnb5",
+    "cmtq0vhph004inv01zpsra418",
+    "cmtmyrzgw004pnq01unyuaaqd",
+    "cmtmwolhd002enq01kwjlwpir"
   ],
   "celebrityClosetProductIds": [
     "cmtmy5lri004cnq010l72sy49",
-    "cmtmyrzgw004pnq01unyuaaqd",
-    "cmtmxovg8003jnq01eh1aq9gy",
-    "cmtmxgh65003bnq01pt3nr2sj"
+    "cmtvqgzjy008dnv01pz8fg2tw",
+    "cmtvq9jaw0086nv01khpgtjyc",
+    "cmtu8ekfc007env011pzc41nm"
   ]
 }
