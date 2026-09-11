@@ -1,6 +1,17 @@
 {
-  "updatedAt": "2026-09-06T05:55:00.000Z",
-  "heroSlides": [],
+  "updatedAt": "2026-09-06T06:10:11.160Z",
+  "heroSlides": [
+    {
+      "id": "slide-1788674801131",
+      "title": "",
+      "imageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_banners-1788674837602-645879749.webp",
+      "linkPath": "/collections",
+      "subtitle": "",
+      "buttonText": "SHOP COLLECTION",
+      "mobileImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_banners-1788674880231-661219763.webp",
+      "desktopImageUrl": "https://sharna-backend-production.up.railway.app/uploads/sharna_banners-1788674837602-645879749.webp"
+    }
+  ],
   "testimonials": [
     {
       "id": "t-1",
@@ -52,8 +63,8 @@
     {
       "id": "cat-4",
       "tag": "Everyday Ethnic",
-      "link": "/shop?category=short-kurtis",
-      "name": "SHORT KURTIS",
+      "link": "/shop?category=kurtis",
+      "name": "KURTIS",
       "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788289065/sharna_products/iizde2d9uhgsj8r2x2ie.jpg"
     },
     {
@@ -75,39 +86,24 @@
     "cmt72xrvp0000pd014vcdeyzm",
     "cmt71n3ze0000vs2okv99zlph",
     "cmt0hjmw20000vsm8huvbrryv",
-    "cmtlr5dpk0029ld01nmulp071",
-    "cmtlsfdju002pld017lc1ms6b",
-    "cmtmpr0pf001hnq01fulogo0v",
-    "cmtmqywdf001nnq01ifu55sjs"
+    "cmtlr5dpk0029ld01nmulp071"
   ],
   "newArrivalsProductIds": [
     "cmt0hjmw20000vsm8huvbrryv",
     "cmt71n3ze0000vs2okv99zlph",
     "cmt72xrvp0000pd014vcdeyzm",
-    "cmtlsfdju002pld017lc1ms6b",
-    "cmtlq7nnu001uld01edvt1ggf",
-    "cmtmpr0pf001hnq01fulogo0v",
-    "cmtmqywdf001nnq01ifu55sjs",
-    "cmtmr4yfl001tnq01agqytcz1",
-    "cmtmwidhm0026nq01kiy4k7y9",
-    "cmtmwolhd002enq01kwjlwpir",
-    "cmtmwwnkw002nnq01jx5iqrhq",
-    "cmtmxgh65003bnq01pt3nr2sj",
-    "cmtlrbkew002gld01khpcgu2k",
-    "cmtlqlenj0021ld01rkzp9tni",
-    "cmtmy5lri004cnq010l72sy49",
-    "cmtmyrzgw004pnq01unyuaaqd"
+    "cmtlsfdju002pld017lc1ms6b"
   ],
   "readyToShipProductIds": [
     "cmt0hjmw20000vsm8huvbrryv",
     "cmt72xrvp0000pd014vcdeyzm",
     "cmt71n3ze0000vs2okv99zlph",
-    "cmtmqywdf001nnq01ifu55sjs",
-    "cmtmr4yfl001tnq01agqytcz1",
-    "cmtmwidhm0026nq01kiy4k7y9",
-    "cmtmwolhd002enq01kwjlwpir",
-    "cmtmwwnkw002nnq01jx5iqrhq",
-    "cmtmxovg8003jnq01eh1aq9gy"
+    "cmtmqywdf001nnq01ifu55sjs"
   ],
-  "celebrityClosetProductIds": []
+  "celebrityClosetProductIds": [
+    "cmtmy5lri004cnq010l72sy49",
+    "cmtmyrzgw004pnq01unyuaaqd",
+    "cmtmxovg8003jnq01eh1aq9gy",
+    "cmtmxgh65003bnq01pt3nr2sj"
+  ]
 }

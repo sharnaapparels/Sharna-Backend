@@ -7,7 +7,7 @@ exports.getAllProducts = async (req, res) => {
   const t0 = Date.now();
   res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
 
-  const { category, collection, search, minPrice, maxPrice, page = 1, limit = 50 } = req.query;
+  const { category, collection, search, minPrice, maxPrice, page = 1, limit = 200 } = req.query;
 
   const isGenericFetch = !category && !collection && !search && !minPrice && !maxPrice;
   const cacheKey = isGenericFetch ? 'all_products_catalog' : (req.originalUrl || '/api/products');

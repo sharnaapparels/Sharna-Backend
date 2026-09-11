@@ -23,12 +23,12 @@
   },
   {
     "id": "col-3",
-    "name": "Short Kurtis & Kurtas",
-    "title": "Short Kurtis & Kurtas",
+    "name": "Kurtis",
+    "title": "Kurtis",
     "subtitle": "Everyday Ethnic",
     "image": "https://res.cloudinary.com/fcmtpwwu/image/upload/v1788289065/sharna_products/iizde2d9uhgsj8r2x2ie.jpg",
-    "route": "/shop?category=short-kurtis",
-    "path": "/shop?category=short-kurtis",
+    "route": "/shop?category=kurtis",
+    "path": "/shop?category=kurtis",
     "isActive": true,
     "sortOrder": 3
   },

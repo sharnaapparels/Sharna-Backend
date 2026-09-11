@@ -43,7 +43,7 @@ const DEFAULT_HOMEPAGE_CONFIG = {
     { id: 'cat-1', name: 'SUIT SETS', tag: 'Anarkalis & Salwars', image: '/src/assets/reception-2.png', link: '/shop?category=suit-sets' },
     { id: 'cat-2', name: 'CO-ORD SETS', tag: 'Indo-Western Edits', image: '/src/assets/ready-to-ship-2.png', link: '/shop?category=coord-sets' },
     { id: 'cat-3', name: 'DRESSES & GOWNS', tag: 'Festive Luxe', image: '/src/assets/festive-1.png', link: '/shop?category=dresses' },
-    { id: 'cat-4', name: 'SHORT KURTIS', tag: 'Everyday Ethnic', image: '/src/assets/reception-1.png', link: '/shop?category=short-kurtis' },
+    { id: 'cat-4', name: 'KURTIS', tag: 'Everyday Ethnic', image: '/src/assets/reception-1.png', link: '/shop?category=kurtis' },
     { id: 'cat-5', name: 'ETHNIC SHIRTS', tag: 'Handcrafted Blouses', image: '/src/assets/celebrity-1.png', link: '/shop?category=shirts' },
     { id: 'cat-6', name: 'FESTIVE COLLECTION', tag: 'Heritage Weaves', image: '/src/assets/festive-2.png', link: '/shop?collection=festive-collection' }
   ]
@@ -380,7 +380,7 @@ const COLLECTIONS_CMS_FILE_PATH = path.join(__dirname, '../../data/collections-c
 const DEFAULT_COLLECTIONS_CONFIG = [
   { id: 'col-1', name: 'Suit Sets', title: 'Suit Sets', subtitle: 'Anarkalis & Salwars', image: '/src/assets/reception-2.png', route: '/shop?category=suit-sets', path: '/shop?category=suit-sets', isActive: true, sortOrder: 1 },
   { id: 'col-2', name: 'Festive Collection', title: 'Festive Collection', subtitle: 'Heritage Weaves', image: '/src/assets/festive-1.png', route: '/shop?collection=festive-collection', path: '/shop?collection=festive-collection', isActive: true, sortOrder: 2 },
-  { id: 'col-3', name: 'Short Kurtis & Kurtas', title: 'Short Kurtis & Kurtas', subtitle: 'Everyday Ethnic', image: '/src/assets/reception-1.png', route: '/shop?category=short-kurtis', path: '/shop?category=short-kurtis', isActive: true, sortOrder: 3 },
+  { id: 'col-3', name: 'Kurtis', title: 'Kurtis', subtitle: 'Everyday Ethnic', image: '/src/assets/reception-1.png', route: '/shop?category=kurtis', path: '/shop?category=kurtis', isActive: true, sortOrder: 3 },
   { id: 'col-4', name: 'Co-Ord Sets', title: 'Co-Ord Sets', subtitle: 'Indo-Western Edits', image: '/src/assets/co-ord-blush.png', route: '/shop?category=coord-sets', path: '/shop?category=coord-sets', isActive: true, sortOrder: 4 },
   { id: 'col-5', name: 'Dresses & Shirts', title: 'Dresses & Shirts', subtitle: 'Festive Luxe & Handcrafted', image: '/src/assets/festive-2.png', route: '/shop?category=dresses', path: '/shop?category=dresses', isActive: true, sortOrder: 5 },
   { id: 'col-6', name: 'Ready To Ship', title: 'Ready To Ship', subtitle: '24-48 Hour Dispatch', image: '/src/assets/ready-1.png', route: '/ready-to-ship', path: '/ready-to-ship', isActive: true, sortOrder: 6 }
