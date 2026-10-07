@@ -106,6 +106,13 @@ const cookieParser = require('cookie-parser');
 // Body parsing — 50mb limit to support high-resolution customer review photos & admin assets
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Ensure req.body is always an object to prevent destructuring errors
+app.use((req, res, next) => {
+  if (!req.body) req.body = {};
+  next();
+});
+
 app.use(cookieParser());
 
 const path = require('path');

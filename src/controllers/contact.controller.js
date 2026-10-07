@@ -3,7 +3,7 @@ const prisma = require('../config/database');
 // POST /api/contact - Submit support ticket / contact form
 exports.submitContact = async (req, res) => {
   try {
-    const { name, email, phone, subject, message } = req.body;
+    const { name, email, phone, subject, message } = req.body || {};
     if (!name || !message) {
       return res.status(400).json({ success: false, message: 'Name and message are required.' });
     }

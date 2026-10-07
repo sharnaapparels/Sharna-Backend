@@ -42,7 +42,7 @@ const formatUserResponse = (user) => ({
 // ─── REGISTER (Step 1: Create account + send OTP) ────────────────────────────
 // POST /api/auth/register
 exports.register = async (req, res) => {
-  const { name, email, phone, password } = req.body;
+  const { name, email, phone, password } = req.body || {};
 
   if (!phone) {
     return res.status(400).json({ success: false, message: 'Phone number is required for WhatsApp OTP verification' });
@@ -148,7 +148,7 @@ const resetOtpAttempts = (phone) => {
 // ─── VERIFY OTP (Step 2: Verify OTP after register) ─────────────────────────
 // POST /api/auth/verify-otp
 exports.verifyOtp = async (req, res) => {
-  const { phone, otp } = req.body;
+  const { phone, otp } = req.body || {};
 
   // 1. Check if user is currently locked out from too many failed OTP attempts
   const lockoutMsg = checkOtpLockout(phone);
